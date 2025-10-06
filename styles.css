@@ -402,6 +402,63 @@ nav {
     flex-wrap: wrap;
 }
 
+.scoreboard-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    justify-content: center;
+}
+
+.meta-item {
+    min-width: 180px;
+    padding: 16px 22px;
+    border-radius: 18px;
+    background: #f9fafb;
+    box-shadow: inset 0 0 0 1px #e5e7eb;
+    text-align: center;
+}
+
+.meta-label {
+    display: block;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #6b7280;
+}
+
+.meta-value {
+    display: block;
+    margin-top: 6px;
+    font-size: 26px;
+    font-weight: 800;
+    color: #111827;
+    font-variant-numeric: tabular-nums;
+}
+
+.scoreboard-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 12px;
+}
+
+.btn-undo {
+    border: 2px dashed #9ca3af;
+    background: transparent;
+    color: #374151;
+    padding: 12px 28px;
+    border-radius: 999px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-undo:hover {
+    background: #f3f4f6;
+    border-color: #6b7280;
+}
+
 .team-card {
     flex: 1;
     min-width: 260px;
@@ -532,17 +589,36 @@ nav {
 }
 
 .set-timeline-header {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: 1fr auto auto;
     align-items: center;
+    gap: 12px;
     margin-bottom: 12px;
     font-weight: 700;
     color: #111827;
 }
 
-.timeline-row {
+.set-title {
+    font-weight: 700;
+}
+
+.set-score {
+    font-size: 18px;
+}
+
+.set-duration {
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6b7280;
     display: flex;
     align-items: center;
+    gap: 6px;
+}
+
+.timeline-row {
+    display: flex;
+    align-items: flex-start;
     gap: 16px;
     margin-bottom: 10px;
 }
@@ -558,9 +634,11 @@ nav {
 }
 
 .timeline-points {
-    display: flex;
-    flex-wrap: wrap;
+    --columns: 1;
+    display: grid;
+    grid-template-columns: repeat(var(--columns), minmax(34px, auto));
     gap: 8px;
+    justify-items: center;
 }
 
 .point-badge {
@@ -574,6 +652,14 @@ nav {
     font-weight: 700;
     color: white;
     box-shadow: 0 8px 15px rgba(107, 114, 128, 0.35);
+}
+
+.point-badge.placeholder {
+    visibility: hidden;
+    border: 0;
+    background: transparent;
+    color: transparent;
+    box-shadow: none;
 }
 
 
@@ -601,6 +687,12 @@ nav {
 .no-points {
     color: #9ca3af;
     font-style: italic;
+}
+
+.timeline-empty {
+    margin: 0;
+    font-style: italic;
+    color: #6b7280;
 }
 
 .set-history-header {

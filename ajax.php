@@ -60,8 +60,14 @@ switch($action) {
     case 'add_point':
         $matchId = intval($_POST['match_id'] ?? 0);
         $scorer = $_POST['scorer'] ?? '';
-        addPoint($matchId, $scorer);
-        jsonResponse(['success' => true]);
+        $result = addPoint($matchId, $scorer);
+        jsonResponse($result);
+        break;
+
+    case 'remove_last_point':
+        $matchId = intval($_POST['match_id'] ?? 0);
+        $result = removeLastPoint($matchId);
+        jsonResponse($result);
         break;
 
     case 'get_match_details':

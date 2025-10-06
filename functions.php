@@ -229,76 +229,202 @@ function startMatchById($matchId) {
 // Adaugă punct
 function addPoint($matchId, $scorer) {
     global $pdo;
-    
-    // Obține meciul
+
+    if (!in_array($scorer, ['team1', 'team2'], true)) {
+        return ['success' => false, 'message' => 'Marcator invalid.'];
+    }
+
     $stmt = $pdo->prepare("SELECT * FROM matches WHERE id = ?");
     $stmt->execute([$matchId]);
     $match = $stmt->fetch();
-    
+
+    if (!$match) {
+        return ['success' => false, 'message' => 'Meciul nu există.'];
+    }
+
+    if ($match['status'] === 'completed') {
+        return ['success' => false, 'message' => 'Meciul este deja încheiat.'];
+    }
+
+    if ($match['status'] === 'pending') {
+        $pdo->prepare("UPDATE matches SET status = 'live' WHERE id = ?")
+            ->execute([$matchId]);
+        $match['status'] = 'live';
+    }
+
+    $match['sets_team1'] = (int)$match['sets_team1'];
+    $match['sets_team2'] = (int)$match['sets_team2'];
     $currentSet = $match['sets_team1'] + $match['sets_team2'] + 1;
-    
-    // Obține sau creează setul curent
+
     $stmt = $pdo->prepare("SELECT * FROM match_sets WHERE match_id = ? AND set_number = ?");
     $stmt->execute([$matchId, $currentSet]);
     $set = $stmt->fetch();
-    
+
     if (!$set) {
-        $pdo->prepare("INSERT INTO match_sets (match_id, set_number) VALUES (?, ?)")->execute([$matchId, $currentSet]);
+        $pdo->prepare("INSERT INTO match_sets (match_id, set_number) VALUES (?, ?)")
+            ->execute([$matchId, $currentSet]);
         $stmt->execute([$matchId, $currentSet]);
         $set = $stmt->fetch();
     }
-    
-    // Adaugă punctul
-    $newScoreTeam1 = $set['score_team1'];
-    $newScoreTeam2 = $set['score_team2'];
-    
+
+    $newScoreTeam1 = (int)$set['score_team1'];
+    $newScoreTeam2 = (int)$set['score_team2'];
+
     if ($scorer === 'team1') {
         $newScoreTeam1++;
     } else {
         $newScoreTeam2++;
     }
-    
-    // Salvează punctul în istoric
-    $pointNumber = $pdo->query("SELECT COUNT(*) FROM match_points WHERE match_id = $matchId AND set_number = $currentSet")->fetchColumn() + 1;
+
+    $pointNumberStmt = $pdo->prepare("SELECT COUNT(*) FROM match_points WHERE match_id = ? AND set_number = ?");
+    $pointNumberStmt->execute([$matchId, $currentSet]);
+    $pointNumber = (int)$pointNumberStmt->fetchColumn() + 1;
+
     $pdo->prepare("INSERT INTO match_points (match_id, set_number, point_number, scorer, score_team1, score_team2) VALUES (?, ?, ?, ?, ?, ?)")
         ->execute([$matchId, $currentSet, $pointNumber, $scorer, $newScoreTeam1, $newScoreTeam2]);
-    
-    // Actualizează scorul setului
-    $pdo->prepare("UPDATE match_sets SET score_team1 = ?, score_team2 = ? WHERE id = ?")
+
+    $pdo->prepare("UPDATE match_sets SET score_team1 = ?, score_team2 = ?, winner = NULL, completed_at = NULL WHERE id = ?")
         ->execute([$newScoreTeam1, $newScoreTeam2, $set['id']]);
-    
-    // Verifică dacă setul s-a terminat
-    $isDecisive = ($match['sets_team1'] == 2 && $match['sets_team2'] == 2);
+
+    $isDecisive = ($currentSet === (int)$match['match_format']);
     $targetScore = $isDecisive ? 15 : 25;
-    
-    if (($newScoreTeam1 >= $targetScore || $newScoreTeam2 >= $targetScore) && abs($newScoreTeam1 - $newScoreTeam2) >= 2) {
+
+    if ((($newScoreTeam1 >= $targetScore) || ($newScoreTeam2 >= $targetScore)) && abs($newScoreTeam1 - $newScoreTeam2) >= 2) {
         $setWinner = $newScoreTeam1 > $newScoreTeam2 ? 'team1' : 'team2';
         $pdo->prepare("UPDATE match_sets SET winner = ?, completed_at = NOW() WHERE id = ?")
             ->execute([$setWinner, $set['id']]);
-        
-        // Actualizează scorul meciului
+
         if ($setWinner === 'team1') {
             $match['sets_team1']++;
         } else {
             $match['sets_team2']++;
         }
-        
+
         $pdo->prepare("UPDATE matches SET sets_team1 = ?, sets_team2 = ? WHERE id = ?")
             ->execute([$match['sets_team1'], $match['sets_team2'], $matchId]);
-        
-        // Verifică dacă meciul s-a terminat
-        $setsToWin = ceil($match['match_format'] / 2);
+
+        $setsToWin = (int)ceil($match['match_format'] / 2);
         if ($match['sets_team1'] >= $setsToWin || $match['sets_team2'] >= $setsToWin) {
             $winnerId = $match['sets_team1'] >= $setsToWin ? $match['team1_id'] : $match['team2_id'];
             $pdo->prepare("UPDATE matches SET status = 'completed', winner_id = ?, completed_at = NOW() WHERE id = ?")
                 ->execute([$winnerId, $matchId]);
-            
-            // Actualizează statistici echipe
+
             updateTeamStats($matchId);
         }
     }
-    
-    return true;
+
+    return ['success' => true];
+}
+
+function removeLastPoint($matchId) {
+    global $pdo;
+
+    $stmt = $pdo->prepare("SELECT * FROM matches WHERE id = ?");
+    $stmt->execute([$matchId]);
+    $match = $stmt->fetch();
+
+    if (!$match) {
+        return ['success' => false, 'message' => 'Meciul nu există.'];
+    }
+
+    if ($match['status'] === 'completed') {
+        return ['success' => false, 'message' => 'Nu poți modifica un meci deja încheiat.'];
+    }
+
+    $lastPointStmt = $pdo->prepare("SELECT * FROM match_points WHERE match_id = ? ORDER BY set_number DESC, point_number DESC LIMIT 1");
+    $lastPointStmt->execute([$matchId]);
+    $lastPoint = $lastPointStmt->fetch();
+
+    if (!$lastPoint) {
+        return ['success' => false, 'message' => 'Nu există puncte de șters.'];
+    }
+
+    $pdo->prepare("DELETE FROM match_points WHERE id = ?")
+        ->execute([$lastPoint['id']]);
+
+    $setStmt = $pdo->prepare("SELECT * FROM match_sets WHERE match_id = ? AND set_number = ?");
+    $setStmt->execute([$matchId, $lastPoint['set_number']]);
+    $setRow = $setStmt->fetch();
+
+    $pointsStmt = $pdo->prepare("SELECT * FROM match_points WHERE match_id = ? AND set_number = ? ORDER BY point_number");
+    $pointsStmt->execute([$matchId, $lastPoint['set_number']]);
+    $remainingPoints = $pointsStmt->fetchAll();
+
+    if (!$remainingPoints) {
+        if ($setRow) {
+            $pdo->prepare("DELETE FROM match_sets WHERE id = ?")
+                ->execute([$setRow['id']]);
+        }
+    } else {
+        $lastSetPoint = end($remainingPoints);
+        $scoreTeam1 = (int)$lastSetPoint['score_team1'];
+        $scoreTeam2 = (int)$lastSetPoint['score_team2'];
+        $isDecisive = ((int)$lastPoint['set_number'] === (int)$match['match_format']);
+        $targetScore = $isDecisive ? 15 : 25;
+
+        $winner = null;
+        $completedAt = null;
+
+        if ((($scoreTeam1 >= $targetScore) || ($scoreTeam2 >= $targetScore)) && abs($scoreTeam1 - $scoreTeam2) >= 2) {
+            $winner = $scoreTeam1 > $scoreTeam2 ? 'team1' : 'team2';
+            $completedAt = $setRow ? $setRow['completed_at'] : $lastSetPoint['created_at'];
+        }
+
+        if ($setRow) {
+            $pdo->prepare("UPDATE match_sets SET score_team1 = ?, score_team2 = ?, winner = ?, completed_at = ? WHERE id = ?")
+                ->execute([$scoreTeam1, $scoreTeam2, $winner, $winner ? $completedAt : null, $setRow['id']]);
+        } else {
+            $pdo->prepare("INSERT INTO match_sets (match_id, set_number, score_team1, score_team2, winner, completed_at) VALUES (?, ?, ?, ?, ?, ?)")
+                ->execute([$matchId, $lastPoint['set_number'], $scoreTeam1, $scoreTeam2, $winner, $winner ? $completedAt : null]);
+        }
+    }
+
+    $setsStmt = $pdo->prepare("SELECT * FROM match_sets WHERE match_id = ? ORDER BY set_number");
+    $setsStmt->execute([$matchId]);
+    $allSets = $setsStmt->fetchAll();
+
+    $setsTeam1 = 0;
+    $setsTeam2 = 0;
+    $lastCompletedAt = null;
+
+    foreach ($allSets as $setData) {
+        if ($setData['winner'] === 'team1') {
+            $setsTeam1++;
+            if ($setData['completed_at']) {
+                $lastCompletedAt = $setData['completed_at'];
+            }
+        } elseif ($setData['winner'] === 'team2') {
+            $setsTeam2++;
+            if ($setData['completed_at']) {
+                $lastCompletedAt = $setData['completed_at'];
+            }
+        }
+    }
+
+    $pointsCountStmt = $pdo->prepare("SELECT COUNT(*) FROM match_points WHERE match_id = ?");
+    $pointsCountStmt->execute([$matchId]);
+    $remainingPointsCount = (int)$pointsCountStmt->fetchColumn();
+
+    $setsToWin = (int)ceil($match['match_format'] / 2);
+    $status = ($match['status'] === 'pending' && $remainingPointsCount === 0) ? 'pending' : 'live';
+    $winnerId = null;
+    $completedAt = null;
+
+    if ($setsTeam1 >= $setsToWin || $setsTeam2 >= $setsToWin) {
+        $status = 'completed';
+        $winnerId = $setsTeam1 >= $setsToWin ? $match['team1_id'] : $match['team2_id'];
+        $completedAt = $lastCompletedAt;
+    }
+
+    if ($status !== 'completed') {
+        $winnerId = null;
+        $completedAt = null;
+    }
+
+    $pdo->prepare("UPDATE matches SET sets_team1 = ?, sets_team2 = ?, status = ?, winner_id = ?, completed_at = ? WHERE id = ?")
+        ->execute([$setsTeam1, $setsTeam2, $status, $winnerId, $completedAt, $matchId]);
+
+    return ['success' => true];
 }
 
 // Actualizează statistici echipe
