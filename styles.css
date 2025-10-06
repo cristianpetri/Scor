@@ -600,7 +600,7 @@ nav {
     color: #1f2937;
 }
 
-.set-timeline {
+.set-timeline { 
     border-radius: 14px;
     padding: 18px;
     background: white;
@@ -718,6 +718,66 @@ nav {
 
 .point-badge.team1.latest {
     box-shadow: 0 10px 22px rgba(59, 130, 246, 0.35);
+}
+
+@media (max-width: 768px) {
+    .scoreboard {
+        padding: 24px;
+        gap: 20px;
+    }
+
+    .scoreboard-header {
+        gap: 16px;
+    }
+
+    .scoreboard-sets {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .set-counter {
+        flex: 1;
+        min-width: auto;
+        padding: 16px;
+    }
+
+    .set-timeline {
+        padding: 16px;
+    }
+
+    .set-timeline-header {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .set-timeline-header .set-score,
+    .set-timeline-header .set-duration {
+        justify-self: flex-start;
+    }
+
+    .timeline-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .team-label {
+        min-width: 0;
+        font-size: 14px;
+    }
+
+    .timeline-points {
+        width: 100%;
+        --columns: auto;
+        grid-template-columns: repeat(auto-fit, minmax(32px, 1fr));
+        justify-items: stretch;
+    }
+
+    .point-badge {
+        width: 100%;
+        max-width: 48px;
+        margin: 0 auto;
+    }
 }
 
 .point-badge.team1 {
