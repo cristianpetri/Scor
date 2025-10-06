@@ -83,7 +83,16 @@ switch($action) {
     case 'get_teams':
         jsonResponse(['teams' => getTeams()]);
         break;
-        
+
+    case 'get_stats':
+        $teams = getTeams();
+        $matches = getMatchesWithHistory();
+        jsonResponse([
+            'teams' => $teams,
+            'matches' => $matches
+        ]);
+        break;
+
     default:
         jsonResponse(['success' => false, 'message' => 'Acțiune invalidă']);
 }

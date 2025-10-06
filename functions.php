@@ -543,4 +543,79 @@ function getMatchSets($matchId) {
     $stmt->execute([$matchId]);
     return $stmt->fetchAll();
 }
+
+function getMatchesWithHistory() {
+    $matches = getMatches();
+    $result = [];
+
+    foreach ($matches as $match) {
+        $points = getMatchPoints($match['id']);
+        $sets = getMatchSets($match['id']);
+
+        $pointsBySet = [];
+        foreach ($points as $point) {
+            $setNumber = (int)$point['set_number'];
+            if (!isset($pointsBySet[$setNumber])) {
+                $pointsBySet[$setNumber] = [
+                    'set_number' => $setNumber,
+                    'points' => []
+                ];
+            }
+
+            $pointsBySet[$setNumber]['points'][] = [
+                'point_number' => (int)$point['point_number'],
+                'scorer' => $point['scorer'],
+                'score_team1' => (int)$point['score_team1'],
+                'score_team2' => (int)$point['score_team2']
+            ];
+        }
+
+        $setDetails = [];
+        foreach ($sets as $set) {
+            $setNumber = (int)$set['set_number'];
+            $setDetails[] = [
+                'set_number' => $setNumber,
+                'score_team1' => (int)$set['score_team1'],
+                'score_team2' => (int)$set['score_team2'],
+                'winner' => $set['winner'],
+                'completed_at' => $set['completed_at'],
+                'points' => array_values($pointsBySet[$setNumber]['points'] ?? [])
+            ];
+
+            unset($pointsBySet[$setNumber]);
+        }
+
+        if (!empty($pointsBySet)) {
+            foreach ($pointsBySet as $setNumber => $data) {
+                $setDetails[] = [
+                    'set_number' => $setNumber,
+                    'score_team1' => 0,
+                    'score_team2' => 0,
+                    'winner' => null,
+                    'completed_at' => null,
+                    'points' => array_values($data['points'])
+                ];
+            }
+        }
+
+        usort($setDetails, function ($a, $b) {
+            return $a['set_number'] <=> $b['set_number'];
+        });
+
+        $result[] = [
+            'id' => (int)$match['id'],
+            'match_order' => (int)$match['match_order'],
+            'team1_name' => $match['team1_name'],
+            'team2_name' => $match['team2_name'],
+            'sets_team1' => (int)$match['sets_team1'],
+            'sets_team2' => (int)$match['sets_team2'],
+            'status' => $match['status'],
+            'winner_name' => $match['winner_name'],
+            'match_format' => (int)$match['match_format'],
+            'points_history' => $setDetails
+        ];
+    }
+
+    return $result;
+}
 ?>
