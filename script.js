@@ -322,6 +322,13 @@ function renderLiveMatch(data) {
         `;
     }
 
+    const winnerId = match.winner_id ? Number(match.winner_id) : null;
+    const team1Winner = isCompleted && winnerId && winnerId === Number(match.team1_id);
+    const team2Winner = isCompleted && winnerId && winnerId === Number(match.team2_id);
+    const pointsLabel = isCompleted ? 'Puncte în ultimul set' : `Puncte în setul ${currentSetNumber}`;
+    const team1WinnerTag = team1Winner ? '<span class="winner-tag">Câștigător</span>' : '';
+    const team2WinnerTag = team2Winner ? '<span class="winner-tag">Câștigător</span>' : '';
+
     const pointsBySet = (points || []).reduce((acc, point) => {
         if (!acc[point.set_number]) acc[point.set_number] = [];
         acc[point.set_number].push(point);
@@ -331,7 +338,10 @@ function renderLiveMatch(data) {
     const pointsHistory = Object.keys(pointsBySet).length ? Object.entries(pointsBySet)
         .map(([setNumber, setPoints]) => `
             <div class="set-history">
-                <h4>Set ${setNumber}</h4>
+                <div class="set-history-header">
+                    <span>Set ${setNumber}</span>
+                    <span>${match.team1_name} ${setPoints[setPoints.length - 1]?.score_team1 ?? 0} - ${setPoints[setPoints.length - 1]?.score_team2 ?? 0} ${match.team2_name}</span>
+                </div>
                 <ul>
                     ${setPoints.map(point => `
                         <li>
@@ -343,33 +353,77 @@ function renderLiveMatch(data) {
             </div>
         `).join('') : '<p>Încă nu au fost înregistrate puncte.</p>';
 
+    const timelineMarkup = sortedSets.length ? sortedSets.map(set => {
+        const setNumber = Number(set.set_number);
+        const setPoints = (pointsBySet[setNumber] || []).slice().sort((a, b) => Number(a.point_number) - Number(b.point_number));
+        const team1Badges = [];
+        const team2Badges = [];
+
+        setPoints.forEach(point => {
+            if (point.scorer === 'team1') {
+                team1Badges.push(`<span class="point-badge team1">${point.score_team1}</span>`);
+            } else {
+                team2Badges.push(`<span class="point-badge team2">${point.score_team2}</span>`);
+            }
+        });
+
+        return `
+            <div class="set-timeline">
+                <div class="set-timeline-header">
+                    <span>Set ${setNumber}</span>
+                    <span>${set.score_team1}-${set.score_team2}</span>
+                </div>
+                <div class="timeline-row">
+                    <span class="team-label">${match.team1_name}</span>
+                    <div class="timeline-points">${team1Badges.join('') || '<span class="no-points">-</span>'}</div>
+                </div>
+                <div class="timeline-row">
+                    <span class="team-label">${match.team2_name}</span>
+                    <div class="timeline-points">${team2Badges.join('') || '<span class="no-points">-</span>'}</div>
+                </div>
+            </div>
+        `;
+    }).join('') : '<p>Nu există date pentru acest meci.</p>';
+
+    const scoreboard = `
+        <div class="scoreboard">
+            <div class="scoreboard-top-bar">
+                <div class="set-box team1">
+                    <span class="set-value">${match.sets_team1}</span>
+                    <span class="set-label">Seturi ${match.team1_name}</span>
+                </div>
+                <div class="scoreboard-center">
+                    <h2>${match.team1_name} vs ${match.team2_name}</h2>
+                    <p>Primul la ${setsToWin} seturi câștigate</p>
+                    <span class="scoreboard-status-line">${statusText}</span>
+                </div>
+                <div class="set-box team2">
+                    <span class="set-value">${match.sets_team2}</span>
+                    <span class="set-label">Seturi ${match.team2_name}</span>
+                </div>
+            </div>
+            <div class="scoreboard-main">
+                <div class="team-panel team1 ${team1Winner ? 'winner' : ''}">
+                    ${team1WinnerTag}
+                    <div class="team-name">${match.team1_name}</div>
+                    <div class="team-points">${currentPointsTeam1}</div>
+                    <div class="team-meta">${pointsLabel}</div>
+                    ${!isCompleted ? `<button class="btn-score" onclick="addPointLive('team1')">+ Punct</button>` : ''}
+                </div>
+                <div class="team-panel team2 ${team2Winner ? 'winner' : ''}">
+                    ${team2WinnerTag}
+                    <div class="team-name">${match.team2_name}</div>
+                    <div class="team-points">${currentPointsTeam2}</div>
+                    <div class="team-meta">${pointsLabel}</div>
+                    ${!isCompleted ? `<button class="btn-score" onclick="addPointLive('team2')">+ Punct</button>` : ''}
+                </div>
+            </div>
+        </div>
+    `;
+
     container.innerHTML = `
-        <div class="live-header">
-            <h2>${match.team1_name} vs ${match.team2_name}</h2>
-            <p>Primul la ${setsToWin} seturi câștigate. ${statusText}</p>
-        </div>
-        <div class="live-score">
-            <div class="team-score">
-                <h3>${match.team1_name}</h3>
-                <span class="score">${currentPointsTeam1}</span>
-                <small>${isCompleted ? 'Puncte în ultimul set' : `Puncte în setul ${currentSetNumber}`}</small>
-            </div>
-            <div class="separator">-</div>
-            <div class="team-score">
-                <h3>${match.team2_name}</h3>
-                <span class="score">${currentPointsTeam2}</span>
-                <small>${isCompleted ? 'Puncte în ultimul set' : `Puncte în setul ${currentSetNumber}`}</small>
-            </div>
-        </div>
-        <div class="sets-summary">Seturi câștigate: ${match.sets_team1} - ${match.sets_team2}</div>
-        ${!isCompleted ? `
-            <div class="live-controls">
-                <button class="btn btn-success" onclick="addPointLive('team1')">+1 ${match.team1_name}</button>
-                <button class="btn btn-success" onclick="addPointLive('team2')">+1 ${match.team2_name}</button>
-            </div>
-        ` : `
-            <div class="winner-banner">Câștigător: <strong>${match.winner_name}</strong></div>
-        `}
+        ${scoreboard}
+        ${isCompleted ? `<div class="winner-banner">Câștigător: <strong>${match.winner_name}</strong></div>` : ''}
         <div class="sets-table">
             <h3>Scor pe seturi</h3>
             <table>
@@ -386,10 +440,17 @@ function renderLiveMatch(data) {
                 </tbody>
             </table>
         </div>
-        <div class="points-history">
-            <h3>Istoric puncte</h3>
-            ${pointsHistory}
-        </div>
+        ${isCompleted ? `
+            <div class="points-timeline">
+                <h3>Istoric puncte detaliat</h3>
+                ${timelineMarkup}
+            </div>
+        ` : `
+            <div class="points-history">
+                <h3>Istoric puncte</h3>
+                ${pointsHistory}
+            </div>
+        `}
     `;
 }
 
