@@ -83,6 +83,13 @@ function updateMatchOrder($matchId, $newOrder) {
     return $stmt->execute([$newOrder, $matchId]);
 }
 
+// Marchează un meci ca început
+function startMatchById($matchId) {
+    global $pdo;
+    $stmt = $pdo->prepare("UPDATE matches SET status = 'live' WHERE id = ?");
+    return $stmt->execute([$matchId]);
+}
+
 // Adaugă punct
 function addPoint($matchId, $scorer) {
     global $pdo;

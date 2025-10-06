@@ -35,17 +35,23 @@ switch($action) {
         updateMatchOrder($matchId, $newOrder);
         jsonResponse(['success' => true, 'matches' => getMatches()]);
         break;
-        
+
+    case 'start_match':
+        $matchId = intval($_POST['match_id'] ?? 0);
+        startMatchById($matchId);
+        jsonResponse(['success' => true]);
+        break;
+
     case 'add_point':
         $matchId = intval($_POST['match_id'] ?? 0);
         $scorer = $_POST['scorer'] ?? '';
         addPoint($matchId, $scorer);
         jsonResponse(['success' => true]);
         break;
-        
+
     case 'get_match_details':
         $matchId = intval($_GET['match_id'] ?? 0);
-        $stmt = $pdo->prepare("SELECT m.*, t1.name as team1_name, t2.name as team2_name FROM matches m JOIN teams t1 ON m.team1_id = t1.id JOIN teams t2 ON m.team2_id = t2.id WHERE m.id = ?");
+        $stmt = $pdo->prepare("SELECT m.*, t1.name as team1_name, t2.name as team2_name, tw.name as winner_name FROM matches m JOIN teams t1 ON m.team1_id = t1.id JOIN teams t2 ON m.team2_id = t2.id LEFT JOIN teams tw ON m.winner_id = tw.id WHERE m.id = ?");
         $stmt->execute([$matchId]);
         $match = $stmt->fetch();
         $points = getMatchPoints($matchId);
