@@ -668,6 +668,25 @@ nav {
     grid-template-columns: repeat(var(--columns), minmax(34px, auto));
     gap: 8px;
     justify-items: center;
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(107, 114, 128, 0.35) transparent;
+}
+
+.timeline-points::-webkit-scrollbar {
+    height: 8px;
+}
+
+.timeline-points::-webkit-scrollbar-thumb {
+    background: rgba(107, 114, 128, 0.35);
+    border-radius: 999px;
+}
+
+.timeline-points::-webkit-scrollbar-track {
+    background: transparent;
 }
 
 .point-badge {
