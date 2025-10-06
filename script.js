@@ -1,6 +1,98 @@
 // Variabile globale
 let currentMatchId = null;
 let currentView = 'setup';
+let liveTimerInterval = null;
+
+function stopLiveTimers() {
+    if (liveTimerInterval) {
+        clearInterval(liveTimerInterval);
+        liveTimerInterval = null;
+    }
+}
+
+function parseDateTime(value) {
+    if (!value) return null;
+    const normalized = value.replace(' ', 'T');
+    const date = new Date(normalized);
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatDuration(totalSeconds) {
+    if (totalSeconds == null || !Number.isFinite(totalSeconds) || totalSeconds < 0) {
+        return '--:--';
+    }
+
+    const seconds = Math.floor(totalSeconds);
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remainingSeconds = seconds % 60;
+
+    if (hours > 0) {
+        return `${hours}:${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+    }
+
+    return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
+}
+
+function updateLiveTimers() {
+    document.querySelectorAll('[data-duration-start]').forEach(node => {
+        const start = parseDateTime(node.dataset.durationStart || '');
+        let end = parseDateTime(node.dataset.durationEnd || '');
+        const isLive = node.dataset.durationLive === 'true';
+
+        if (isLive) {
+            end = new Date();
+        }
+
+        if (!start || !end) {
+            node.textContent = '⏱️ --:--';
+            return;
+        }
+
+        const diffSeconds = Math.max(0, (end.getTime() - start.getTime()) / 1000);
+        node.textContent = `⏱️ ${formatDuration(diffSeconds)}`;
+    });
+}
+
+function scheduleLiveTimers(isCompleted) {
+    stopLiveTimers();
+    updateLiveTimers();
+
+    if (!isCompleted) {
+        liveTimerInterval = setInterval(updateLiveTimers, 1000);
+    }
+}
+
+function buildDurationInfo(startValue, endValue, shouldRun) {
+    const start = parseDateTime(startValue || '');
+    let end = parseDateTime(endValue || '');
+    let isLive = Boolean(shouldRun && start);
+
+    if (!start) {
+        isLive = false;
+    }
+
+    if (isLive) {
+        end = new Date();
+    }
+
+    let display = '--:--';
+    if (start && (end || isLive)) {
+        const diffSeconds = Math.max(0, ((isLive ? Date.now() : end.getTime()) - start.getTime()) / 1000);
+        display = formatDuration(diffSeconds);
+    }
+
+    return {
+        start: start && startValue ? startValue : '',
+        end: !isLive && end && endValue ? endValue : '',
+        live: isLive,
+        display
+    };
+}
+
+function durationAttributes(info) {
+    return `data-duration-start="${info.start}" data-duration-end="${info.end}" data-duration-live="${info.live ? 'true' : 'false'}"`;
+}
 
 // Inițializare după încărcarea paginii
 document.addEventListener('DOMContentLoaded', () => {
@@ -34,6 +126,10 @@ function switchView(view) {
     document.getElementById('view-' + view).classList.add('active');
 
     // Încarcă date pentru view
+    if (view !== 'live') {
+        stopLiveTimers();
+    }
+
     if (view === 'matches') loadMatches();
     if (view === 'standings') loadStandings();
     if (view === 'stats') loadStats();
@@ -248,6 +344,7 @@ function loadLiveMatch() {
     if (!container) return;
 
     if (!currentMatchId) {
+        stopLiveTimers();
         container.innerHTML = '<p class="text-center">Selectează un meci din lista de meciuri pentru a începe</p>';
         return;
     }
@@ -256,12 +353,14 @@ function loadLiveMatch() {
         .then(r => r.json())
         .then(data => {
             if (!data.match) {
+                stopLiveTimers();
                 container.innerHTML = '<p class="text-center">Meciul selectat nu a fost găsit.</p>';
                 return;
             }
             renderLiveMatch(data);
         })
         .catch(() => {
+            stopLiveTimers();
             container.innerHTML = '<p class="text-center">Eroare la încărcarea meciului.</p>';
         });
 }
@@ -353,6 +452,18 @@ function renderLiveMatch(data) {
             </div>
         `).join('') : '<p>Încă nu au fost înregistrate puncte.</p>';
 
+    const matchDurationInfo = buildDurationInfo(
+        points[0]?.created_at || '',
+        points.length ? points[points.length - 1].created_at : '',
+        !isCompleted && points.length > 0
+    );
+
+    const matchDurationAttrs = durationAttributes(matchDurationInfo);
+    const matchDurationText = `⏱️ ${matchDurationInfo.display}`;
+    const secondaryMetaLabel = isCompleted ? 'Seturi jucate' : 'Set curent';
+    const secondaryMetaValue = isCompleted ? completedSetsCount : currentSetNumber;
+    const removePointButton = (!isCompleted && points.length) ? '<button class="btn-undo" onclick="removeLastPoint()">↩️ Anulează ultimul punct</button>' : '';
+
     const setNumbers = Array.from(new Set([
         ...sortedSets.map(set => Number(set.set_number)),
         ...Object.keys(pointsBySet).map(Number),
@@ -363,38 +474,66 @@ function renderLiveMatch(data) {
         const setDetails = sortedSets.find(set => Number(set.set_number) === setNumber) || null;
         const setPoints = (pointsBySet[setNumber] || []).slice().sort((a, b) => Number(a.point_number) - Number(b.point_number));
         const highlightActive = !isCompleted && setNumber === currentSetNumber;
-        const team1Badges = [];
-        const team2Badges = [];
+        const totalColumns = setPoints.length;
+        const latestIndex = totalColumns - 1;
+        const setStartTime = setPoints[0]?.created_at || '';
+        const setEndTime = totalColumns ? setPoints[totalColumns - 1].created_at : '';
+        const durationInfo = buildDurationInfo(setStartTime, setEndTime, highlightActive && totalColumns > 0);
+        const durationAttrs = durationAttributes(durationInfo);
+        const durationText = `⏱️ ${durationInfo.display}`;
+        const displayScoreTeam1 = Number(setDetails?.score_team1 ?? (setPoints[totalColumns - 1]?.score_team1 ?? 0));
+        const displayScoreTeam2 = Number(setDetails?.score_team2 ?? (setPoints[totalColumns - 1]?.score_team2 ?? 0));
+        const gridColumnsStyle = totalColumns ? ` style="--columns:${totalColumns}"` : '';
 
-        setPoints.forEach((point, idx) => {
-            const badgeClasses = ['point-badge', point.scorer === 'team1' ? 'team1' : 'team2'];
-            if (highlightActive && idx === setPoints.length - 1) {
-                badgeClasses.push('latest');
-            }
+        if (!totalColumns) {
+            return `
+                <div class="set-timeline ${highlightActive ? 'set-timeline-live' : ''}">
+                    <div class="set-timeline-header">
+                        <span class="set-title">Set ${setNumber}</span>
+                        <span class="set-score">${displayScoreTeam1}-${displayScoreTeam2}</span>
+                        <span class="set-duration" ${durationAttrs}>⏱️ --:--</span>
+                    </div>
+                    <p class="timeline-empty">Încă nu s-au marcat puncte în acest set.</p>
+                </div>
+            `;
+        }
 
+        const team1Badges = setPoints.map((point, idx) => {
             if (point.scorer === 'team1') {
-                team1Badges.push(`<span class="${badgeClasses.join(' ')}">${point.score_team1}</span>`);
-            } else {
-                team2Badges.push(`<span class="${badgeClasses.join(' ')}">${point.score_team2}</span>`);
+                const badgeClasses = ['point-badge', 'team1'];
+                if (highlightActive && idx === latestIndex) {
+                    badgeClasses.push('latest');
+                }
+                return `<span class="${badgeClasses.join(' ')}">${point.score_team1}</span>`;
             }
-        });
+            return '<span class="point-badge placeholder"></span>';
+        }).join('');
 
-        const displayScoreTeam1 = Number(setDetails?.score_team1 ?? (setPoints[setPoints.length - 1]?.score_team1 ?? 0));
-        const displayScoreTeam2 = Number(setDetails?.score_team2 ?? (setPoints[setPoints.length - 1]?.score_team2 ?? 0));
+        const team2Badges = setPoints.map((point, idx) => {
+            if (point.scorer === 'team2') {
+                const badgeClasses = ['point-badge', 'team2'];
+                if (highlightActive && idx === latestIndex) {
+                    badgeClasses.push('latest');
+                }
+                return `<span class="${badgeClasses.join(' ')}">${point.score_team2}</span>`;
+            }
+            return '<span class="point-badge placeholder"></span>';
+        }).join('');
 
         return `
             <div class="set-timeline ${highlightActive ? 'set-timeline-live' : ''}">
                 <div class="set-timeline-header">
-                    <span>Set ${setNumber}</span>
-                    <span>${displayScoreTeam1}-${displayScoreTeam2}</span>
+                    <span class="set-title">Set ${setNumber}</span>
+                    <span class="set-score">${displayScoreTeam1}-${displayScoreTeam2}</span>
+                    <span class="set-duration" ${durationAttrs}>${durationText}</span>
                 </div>
                 <div class="timeline-row">
                     <span class="team-label">${match.team1_name}</span>
-                    <div class="timeline-points">${team1Badges.join('') || '<span class="no-points">-</span>'}</div>
+                    <div class="timeline-points"${gridColumnsStyle}>${team1Badges}</div>
                 </div>
                 <div class="timeline-row">
                     <span class="team-label">${match.team2_name}</span>
-                    <div class="timeline-points">${team2Badges.join('') || '<span class="no-points">-</span>'}</div>
+                    <div class="timeline-points"${gridColumnsStyle}>${team2Badges}</div>
                 </div>
             </div>
         `;
@@ -435,6 +574,17 @@ function renderLiveMatch(data) {
                     ${!isCompleted ? `<button class="btn-score" onclick="addPointLive('team2')">+ Punct</button>` : ''}
                 </div>
             </div>
+            <div class="scoreboard-meta">
+                <div class="meta-item">
+                    <span class="meta-label">Durată meci</span>
+                    <span class="meta-value" id="match-duration" ${matchDurationAttrs}>${matchDurationText}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">${secondaryMetaLabel}</span>
+                    <span class="meta-value">${secondaryMetaValue}</span>
+                </div>
+            </div>
+            ${removePointButton ? `<div class="scoreboard-actions">${removePointButton}</div>` : ''}
         </div>
     `;
 
@@ -475,6 +625,8 @@ function renderLiveMatch(data) {
             </div>
         `}
     `;
+
+    scheduleLiveTimers(isCompleted);
 }
 
 function addPointLive(teamKey) {
@@ -490,11 +642,45 @@ function addPointLive(teamKey) {
         body: formData
     })
     .then(r => r.json())
-    .then(() => {
+    .then(data => {
+        if (!data.success) {
+            alert(data.message || 'Nu am putut adăuga punctul.');
+            return;
+        }
         loadLiveMatch();
         loadMatches();
         if (currentView === 'standings') loadStandings();
         if (currentView === 'stats') loadStats();
+    })
+    .catch(() => {
+        alert('Nu am putut adăuga punctul.');
+    });
+}
+
+function removeLastPoint() {
+    if (!currentMatchId) return;
+    if (!confirm('Ești sigur că vrei să anulezi ultimul punct înregistrat?')) return;
+
+    const formData = new FormData();
+    formData.append('action', 'remove_last_point');
+    formData.append('match_id', currentMatchId);
+
+    fetch('ajax.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success) {
+            alert(data.message || 'Nu am putut șterge ultimul punct.');
+            return;
+        }
+
+        loadLiveMatch();
+        loadMatches();
+    })
+    .catch(() => {
+        alert('Nu am putut șterge ultimul punct.');
     });
 }
 
