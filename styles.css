@@ -327,10 +327,25 @@ nav {
     font-size: 64px;
 }
 
+.live-score .team-score small {
+    display: block;
+    margin-top: 8px;
+    color: rgba(249, 250, 251, 0.8);
+    text-align: center;
+    font-size: 14px;
+}
+
 .live-score .separator {
     font-size: 48px;
     font-weight: bold;
     color: #374151;
+}
+
+.sets-summary {
+    text-align: center;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 20px;
 }
 
 .winner-banner {
@@ -345,6 +360,15 @@ nav {
 
 .sets-table {
     margin-bottom: 25px;
+}
+
+.sets-table table tr.set-current {
+    background: #eef2ff;
+    font-weight: 600;
+}
+
+.sets-table table tr.set-current td {
+    color: #1f2937;
 }
 
 .set-history {

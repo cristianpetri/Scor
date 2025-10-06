@@ -267,26 +267,60 @@ function loadLiveMatch() {
 }
 
 function renderLiveMatch(data) {
-    const { match, sets, points } = data;
+    const { match, sets = [], points = [] } = data;
     const container = document.getElementById('live-match-container');
     if (!container) return;
 
     const isCompleted = match.status === 'completed';
-    const currentSet = sets.length ? Math.max(...sets.map(set => set.set_number)) : 1;
+    const completedSetsCount = Number(match.sets_team1) + Number(match.sets_team2);
+    const currentSetNumber = isCompleted ? Math.max(completedSetsCount, 1) : completedSetsCount + 1;
+    const currentSetData = (sets.find(set => Number(set.set_number) === currentSetNumber) || {
+        set_number: currentSetNumber,
+        score_team1: 0,
+        score_team2: 0,
+        winner: null
+    });
     const setsToWin = Math.ceil(match.match_format / 2);
 
-    const setsRows = sets.length ? sets.map(set => `
-        <tr class="${set.winner ? 'set-complete' : ''}">
+    const statusText = isCompleted
+        ? `Meci finalizat. Scor seturi: ${match.sets_team1}-${match.sets_team2}`
+        : `Set curent: ${currentSetNumber} · Seturi câștigate: ${match.sets_team1}-${match.sets_team2}`;
+
+    const currentPointsTeam1 = Number(currentSetData.score_team1) || 0;
+    const currentPointsTeam2 = Number(currentSetData.score_team2) || 0;
+
+    const sortedSets = [...sets].sort((a, b) => Number(a.set_number) - Number(b.set_number));
+
+    let setsRows = sortedSets.map(set => `
+        <tr class="${set.winner ? 'set-complete' : (Number(set.set_number) === currentSetNumber && !isCompleted ? 'set-current' : '')}">
             <td>Set ${set.set_number}</td>
             <td>${set.score_team1}</td>
             <td>${set.score_team2}</td>
-            <td>${set.winner ? (set.winner === 'team1' ? match.team1_name : match.team2_name) : '-'}</td>
+            <td>${set.winner ? (set.winner === 'team1' ? match.team1_name : match.team2_name) : (Number(set.set_number) === currentSetNumber && !isCompleted ? 'În desfășurare' : '-')}</td>
         </tr>
-    `).join('') : `
-        <tr>
-            <td colspan="4">Setul 1 încă nu a început.</td>
-        </tr>
-    `;
+    `).join('');
+
+    if (!isCompleted && !sortedSets.some(set => Number(set.set_number) === currentSetNumber)) {
+        setsRows += `
+            <tr class="set-current">
+                <td>Set ${currentSetNumber}</td>
+                <td>0</td>
+                <td>0</td>
+                <td>În așteptare</td>
+            </tr>
+        `;
+    }
+
+    if (!setsRows) {
+        setsRows = `
+            <tr class="set-current">
+                <td>Set 1</td>
+                <td>0</td>
+                <td>0</td>
+                <td>În așteptare</td>
+            </tr>
+        `;
+    }
 
     const pointsBySet = (points || []).reduce((acc, point) => {
         if (!acc[point.set_number]) acc[point.set_number] = [];
@@ -312,19 +346,22 @@ function renderLiveMatch(data) {
     container.innerHTML = `
         <div class="live-header">
             <h2>${match.team1_name} vs ${match.team2_name}</h2>
-            <p>Primul la ${setsToWin} seturi câștigate. ${isCompleted ? 'Meci finalizat.' : `Set curent: ${currentSet}`}</p>
+            <p>Primul la ${setsToWin} seturi câștigate. ${statusText}</p>
         </div>
         <div class="live-score">
             <div class="team-score">
                 <h3>${match.team1_name}</h3>
-                <span class="score">${match.sets_team1}</span>
+                <span class="score">${currentPointsTeam1}</span>
+                <small>${isCompleted ? 'Puncte în ultimul set' : `Puncte în setul ${currentSetNumber}`}</small>
             </div>
             <div class="separator">-</div>
             <div class="team-score">
                 <h3>${match.team2_name}</h3>
-                <span class="score">${match.sets_team2}</span>
+                <span class="score">${currentPointsTeam2}</span>
+                <small>${isCompleted ? 'Puncte în ultimul set' : `Puncte în setul ${currentSetNumber}`}</small>
             </div>
         </div>
+        <div class="sets-summary">Seturi câștigate: ${match.sets_team1} - ${match.sets_team2}</div>
         ${!isCompleted ? `
             <div class="live-controls">
                 <button class="btn btn-success" onclick="addPointLive('team1')">+1 ${match.team1_name}</button>
