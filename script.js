@@ -260,10 +260,15 @@ function loadMatches() {
             }
 
             container.innerHTML = data.matches.map((match, idx) => `
-                <div class="match-item ${match.status === 'completed' ? 'completed' : ''}">
+                <div class="match-item ${match.status === 'completed' ? 'completed' : ''} ${match.status === 'live' ? 'live' : ''}">
                     <div class="match-header">
                         <div class="match-info">
-                            <span style="color: #6b7280;">Meci #${match.match_order}</span>
+                            <div class="match-meta">
+                                <span class="match-number">Meci #${match.match_order}</span>
+                                <span class="match-status match-status-${match.status}">
+                                    ${match.status === 'live' ? 'În desfășurare' : (match.status === 'completed' ? 'Finalizat' : 'Programat')}
+                                </span>
+                            </div>
                             <h3>${match.team1_name} vs ${match.team2_name}</h3>
                             ${match.status === 'completed' ? `
                                 <div class="winner">Câștigător: ${match.winner_name} (${match.sets_team1}-${match.sets_team2})</div>
