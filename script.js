@@ -439,24 +439,6 @@ function renderLiveMatch(data) {
         return acc;
     }, {});
 
-    const pointsHistoryMarkup = Object.keys(pointsBySet).length ? Object.entries(pointsBySet)
-        .map(([setNumber, setPoints]) => `
-            <div class="set-history">
-                <div class="set-history-header">
-                    <span>Set ${setNumber}</span>
-                    <span>${match.team1_name} ${setPoints[setPoints.length - 1]?.score_team1 ?? 0} - ${setPoints[setPoints.length - 1]?.score_team2 ?? 0} ${match.team2_name}</span>
-                </div>
-                <ul>
-                    ${setPoints.map(point => `
-                        <li>
-                            <strong>${point.scorer === 'team1' ? match.team1_name : match.team2_name}</strong>
-                            &ndash; scor ${point.score_team1}-${point.score_team2}
-                        </li>
-                    `).join('')}
-                </ul>
-            </div>
-        `).join('') : '<p>Încă nu au fost înregistrate puncte.</p>';
-
     const matchDurationInfo = buildDurationInfo(
         points[0]?.created_at || '',
         points.length ? points[points.length - 1].created_at : '',
@@ -612,23 +594,10 @@ function renderLiveMatch(data) {
                 </tbody>
             </table>
         </div>
-        ${isCompleted ? `
-            <div class="points-timeline">
-                <h3>Istoric puncte detaliat</h3>
-                ${timelineMarkup}
-            </div>
-        ` : `
-            <div class="points-sections">
-                <div class="points-history">
-                    <h3>Istoric puncte</h3>
-                    ${pointsHistoryMarkup}
-                </div>
-                <div class="points-timeline live">
-                    <h3>Istoric puncte detaliat</h3>
-                    ${timelineMarkup}
-                </div>
-            </div>
-        `}
+        <div class="points-timeline ${isCompleted ? '' : 'live'}">
+            <h3>Istoric puncte detaliat</h3>
+            ${timelineMarkup}
+        </div>
     `;
 
     scheduleLiveTimers(isCompleted);
