@@ -387,30 +387,32 @@ function renderLiveMatch(data) {
 
     const scoreboard = `
         <div class="scoreboard">
-            <div class="scoreboard-top-bar">
-                <div class="set-box team1">
-                    <span class="set-value">${match.sets_team1}</span>
-                    <span class="set-label">Seturi ${match.team1_name}</span>
-                </div>
-                <div class="scoreboard-center">
+            <div class="scoreboard-header">
+                <div class="scoreboard-title">
                     <h2>${match.team1_name} vs ${match.team2_name}</h2>
-                    <p>Primul la ${setsToWin} seturi câștigate</p>
-                    <span class="scoreboard-status-line">${statusText}</span>
+                    <p>${statusText}</p>
+                    <span class="scoreboard-subtitle">Primul la ${setsToWin} seturi câștigate</span>
                 </div>
-                <div class="set-box team2">
-                    <span class="set-value">${match.sets_team2}</span>
-                    <span class="set-label">Seturi ${match.team2_name}</span>
+                <div class="scoreboard-sets">
+                    <div class="set-counter team1">
+                        <span class="set-label">Seturi ${match.team1_name}</span>
+                        <span class="set-value">${match.sets_team1}</span>
+                    </div>
+                    <div class="set-counter team2">
+                        <span class="set-label">Seturi ${match.team2_name}</span>
+                        <span class="set-value">${match.sets_team2}</span>
+                    </div>
                 </div>
             </div>
             <div class="scoreboard-main">
-                <div class="team-panel team1 ${team1Winner ? 'winner' : ''}">
+                <div class="team-card team1 ${team1Winner ? 'winner' : ''}">
                     ${team1WinnerTag}
                     <div class="team-name">${match.team1_name}</div>
                     <div class="team-points">${currentPointsTeam1}</div>
                     <div class="team-meta">${pointsLabel}</div>
                     ${!isCompleted ? `<button class="btn-score" onclick="addPointLive('team1')">+ Punct</button>` : ''}
                 </div>
-                <div class="team-panel team2 ${team2Winner ? 'winner' : ''}">
+                <div class="team-card team2 ${team2Winner ? 'winner' : ''}">
                     ${team2WinnerTag}
                     <div class="team-name">${match.team2_name}</div>
                     <div class="team-points">${currentPointsTeam2}</div>
