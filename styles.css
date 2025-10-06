@@ -194,8 +194,13 @@ nav {
 }
 
 .match-item.completed {
-    background: #d1fae5;
-    border-color: #10b981;
+    background: #fee2e2;
+    border-color: #ef4444;
+}
+
+.match-item.live {
+    background: #fff7ed;
+    border-color: #f97316;
 }
 
 .match-header {
@@ -209,8 +214,44 @@ nav {
     color: #1f2937;
 }
 
+.match-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.match-number {
+    color: #6b7280;
+}
+
+.match-status {
+    display: inline-flex;
+    align-items: center;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 999px;
+    text-transform: uppercase;
+}
+
+.match-status-pending {
+    background: #e0e7ff;
+    color: #3730a3;
+}
+
+.match-status-live {
+    background: #ffedd5;
+    color: #c2410c;
+}
+
+.match-status-completed {
+    background: #fecaca;
+    color: #b91c1c;
+}
+
 .match-info .winner {
-    color: #10b981;
+    color: #b91c1c;
     font-weight: 600;
     margin-top: 5px;
 }
