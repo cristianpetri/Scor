@@ -61,6 +61,14 @@ Aplicație web în PHP pentru organizarea și monitorizarea unui turneu de volei
    - Accesează domeniul și adaugă câteva echipe pentru a verifica conexiunea la baza de date.
    - Dacă apar erori, consultă log-urile de server sau activează afișarea erorilor în `php.ini` (temporar) pentru depanare.
 
+## Depanare
+- **Eroare „Access denied for user ... to database 'volei_turneu'” la import**
+  - Utilizatorul MySQL folosit nu are dreptul de a crea baze de date sau de a accesa baza `volei_turneu`.
+  - Soluții posibile:
+    - Creează baza de date manual din panoul de control și acordă utilizatorului drepturi de `ALL PRIVILEGES` asupra acelei baze.
+    - Modifică scriptul `database.sql` și elimină liniile `CREATE DATABASE...` și `USE volei_turneu;`, apoi rulează importul în baza deja selectată.
+    - Verifică în `config.php` că numele bazei (`DB_NAME`) și credențialele coincid cu cele configurate pe server.
+
 ## Recomandări de securitate
 - Setează o parolă puternică pentru utilizatorul bazei de date și limitează-i privilegiile la baza creată.
 - Ia în considerare protejarea accesului la aplicație cu autentificare dacă nu este destinată publicului larg.
