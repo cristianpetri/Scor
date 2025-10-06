@@ -703,10 +703,13 @@ function loadStandings() {
                         <tr>
                             <th>#</th>
                             <th>Echipă</th>
+                            <th>Puncte Clasament</th>
                             <th>Victorii</th>
                             <th>Înfrângeri</th>
                             <th>Seturi (+/-)</th>
+                            <th>Raport Seturi</th>
                             <th>Puncte (+/-)</th>
+                            <th>Raport Puncte</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -714,10 +717,13 @@ function loadStandings() {
                             <tr>
                                 <td>${idx + 1}</td>
                                 <td>${team.name}</td>
+                                <td>${team.ranking_points}</td>
                                 <td>${team.wins}</td>
                                 <td>${team.losses}</td>
                                 <td>${team.sets_won}-${team.sets_lost}</td>
+                                <td>${team.set_ratio_display}</td>
                                 <td>${team.points_won}-${team.points_lost}</td>
+                                <td>${team.point_ratio_display}</td>
                             </tr>
                         `).join('')}
                     </tbody>

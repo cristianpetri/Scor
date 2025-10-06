@@ -8,10 +8,64 @@ function addTeam($name) {
     return $stmt->execute([$name]);
 }
 
-// Obține toate echipele
+// Obține toate echipele și calculează clasamentul conform criteriilor
 function getTeams() {
     global $pdo;
-    return $pdo->query("SELECT * FROM teams ORDER BY wins DESC, (sets_won - sets_lost) DESC")->fetchAll();
+
+    $stmt = $pdo->query("SELECT * FROM teams");
+    $teams = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($teams as &$team) {
+        $team['wins'] = (int)$team['wins'];
+        $team['losses'] = (int)$team['losses'];
+        $team['sets_won'] = (int)$team['sets_won'];
+        $team['sets_lost'] = (int)$team['sets_lost'];
+        $team['points_won'] = (int)$team['points_won'];
+        $team['points_lost'] = (int)$team['points_lost'];
+
+        $team['ranking_points'] = ($team['wins'] * 2) + $team['losses'];
+
+        $team['set_ratio_value'] = $team['sets_lost'] > 0
+            ? $team['sets_won'] / $team['sets_lost']
+            : ($team['sets_won'] > 0 ? PHP_FLOAT_MAX : 0);
+
+        $team['point_ratio_value'] = $team['points_lost'] > 0
+            ? $team['points_won'] / $team['points_lost']
+            : ($team['points_won'] > 0 ? PHP_FLOAT_MAX : 0);
+
+        if ($team['sets_won'] === 0 && $team['sets_lost'] === 0) {
+            $team['set_ratio_display'] = '0.00';
+        } elseif ($team['sets_lost'] === 0) {
+            $team['set_ratio_display'] = '∞';
+        } else {
+            $team['set_ratio_display'] = number_format($team['set_ratio_value'], 2);
+        }
+
+        if ($team['points_won'] === 0 && $team['points_lost'] === 0) {
+            $team['point_ratio_display'] = '0.00';
+        } elseif ($team['points_lost'] === 0) {
+            $team['point_ratio_display'] = '∞';
+        } else {
+            $team['point_ratio_display'] = number_format($team['point_ratio_value'], 2);
+        }
+    }
+    unset($team);
+
+    usort($teams, function ($a, $b) {
+        return ($b['ranking_points'] <=> $a['ranking_points'])
+            ?: ($b['set_ratio_value'] <=> $a['set_ratio_value'])
+            ?: ($b['point_ratio_value'] <=> $a['point_ratio_value'])
+            ?: (($b['sets_won'] - $b['sets_lost']) <=> ($a['sets_won'] - $a['sets_lost']))
+            ?: (($b['points_won'] - $b['points_lost']) <=> ($a['points_won'] - $a['points_lost']))
+            ?: strcasecmp($a['name'], $b['name']);
+    });
+
+    foreach ($teams as &$team) {
+        unset($team['set_ratio_value'], $team['point_ratio_value']);
+    }
+    unset($team);
+
+    return $teams;
 }
 
 // Șterge echipă
