@@ -21,8 +21,18 @@ switch($action) {
         
     case 'generate_matches':
         $format = intval($_POST['format'] ?? 3);
-        generateMatches($format);
-        jsonResponse(['success' => true, 'matches' => getMatches()]);
+        $result = generateMatches($format);
+
+        if (!$result['success']) {
+            jsonResponse(['success' => false, 'message' => $result['message'] ?? 'Eroare la generarea meciurilor.']);
+        }
+
+        $response = ['success' => true, 'matches' => getMatches()];
+        if (!empty($result['warning'])) {
+            $response['warning'] = $result['warning'];
+        }
+
+        jsonResponse($response);
         break;
         
     case 'get_matches':
@@ -38,7 +48,12 @@ switch($action) {
 
     case 'start_match':
         $matchId = intval($_POST['match_id'] ?? 0);
-        startMatchById($matchId);
+        $result = startMatchById($matchId);
+
+        if (!$result['success']) {
+            jsonResponse(['success' => false, 'message' => $result['message'] ?? 'Nu am putut porni meciul.']);
+        }
+
         jsonResponse(['success' => true]);
         break;
 

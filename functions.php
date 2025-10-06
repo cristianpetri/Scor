@@ -21,27 +21,142 @@ function deleteTeam($id) {
     return $stmt->execute([$id]);
 }
 
-// Generează meciuri (fiecare cu fiecare)
+// Generează meciuri (fiecare cu fiecare) respectând regula pauzei între meciuri
 function generateMatches($format = 3) {
     global $pdo;
-    
+
+    $teams = getTeams();
+    if (count($teams) < 2) {
+        return [
+            'success' => false,
+            'message' => 'Ai nevoie de cel puțin două echipe pentru a genera meciuri.'
+        ];
+    }
+
+    $scheduleData = buildTournamentSchedule(array_column($teams, 'id'));
+
     // Șterge meciurile existente
     $pdo->exec("DELETE FROM matches");
     $pdo->exec("DELETE FROM match_sets");
     $pdo->exec("DELETE FROM match_points");
-    
-    $teams = getTeams();
+
     $order = 1;
-    
-    for ($i = 0; $i < count($teams); $i++) {
-        for ($j = $i + 1; $j < count($teams); $j++) {
-            $stmt = $pdo->prepare("INSERT INTO matches (team1_id, team2_id, match_order, match_format) VALUES (?, ?, ?, ?)");
-            $stmt->execute([$teams[$i]['id'], $teams[$j]['id'], $order, $format]);
-            $order++;
+    $insertStmt = $pdo->prepare("INSERT INTO matches (team1_id, team2_id, match_order, match_format) VALUES (?, ?, ?, ?)");
+
+    foreach ($scheduleData['matches'] as $match) {
+        $insertStmt->execute([$match[0], $match[1], $order, $format]);
+        $order++;
+    }
+
+    return [
+        'success' => true,
+        'warning' => $scheduleData['warning']
+    ];
+}
+
+// Construiește programul de meciuri cu restricția pauzei între partide consecutive
+function buildTournamentSchedule(array $teamIds) {
+    $rounds = createRoundRobinRounds($teamIds);
+    $ordered = flattenRoundsWithRest($rounds);
+
+    $allMatches = [];
+    foreach ($rounds as $round) {
+        foreach ($round as $match) {
+            $allMatches[] = $match;
         }
     }
-    
-    return true;
+
+    if ($ordered !== null) {
+        return [
+            'matches' => $ordered,
+            'warning' => null
+        ];
+    }
+
+    $teamCount = count($teamIds);
+    $warning = 'Nu a fost posibil să se respecte complet regula pauzei între meciuri pentru toate echipele.';
+    if ($teamCount < 5) {
+        $warning .= ' Sunt necesare cel puțin cinci echipe pentru aplicarea regulii.';
+    }
+
+    return [
+        'matches' => $allMatches,
+        'warning' => $warning
+    ];
+}
+
+function createRoundRobinRounds(array $teamIds) {
+    $teamIds = array_values($teamIds);
+    if (count($teamIds) % 2 === 1) {
+        $teamIds[] = null; // Echipa "bye"
+    }
+
+    $numTeams = count($teamIds);
+    $roundsCount = $numTeams - 1;
+    $half = $numTeams / 2;
+    $rounds = [];
+
+    for ($round = 0; $round < $roundsCount; $round++) {
+        $roundMatches = [];
+        for ($i = 0; $i < $half; $i++) {
+            $team1 = $teamIds[$i];
+            $team2 = $teamIds[$numTeams - 1 - $i];
+
+            if ($team1 === null || $team2 === null) {
+                continue;
+            }
+
+            $roundMatches[] = [$team1, $team2];
+        }
+
+        $rounds[] = $roundMatches;
+
+        $fixed = $teamIds[0];
+        $rotating = array_slice($teamIds, 1);
+        array_unshift($rotating, array_pop($rotating));
+        $teamIds = array_merge([$fixed], $rotating);
+    }
+
+    return $rounds;
+}
+
+function flattenRoundsWithRest(array $rounds) {
+    $schedule = [];
+    $previousTeams = [];
+
+    foreach ($rounds as $round) {
+        $roundOrder = [];
+        $available = $round;
+        $localPrevious = $previousTeams;
+
+        while (!empty($available)) {
+            $pickedIndex = null;
+
+            foreach ($available as $idx => $match) {
+                if (!array_intersect($match, $localPrevious)) {
+                    $pickedIndex = $idx;
+                    break;
+                }
+            }
+
+            if ($pickedIndex === null) {
+                return null;
+            }
+
+            $match = $available[$pickedIndex];
+            $roundOrder[] = $match;
+            $localPrevious = $match;
+            unset($available[$pickedIndex]);
+            $available = array_values($available);
+        }
+
+        if (!empty($roundOrder)) {
+            $schedule = array_merge($schedule, $roundOrder);
+            $previousTeams = end($roundOrder);
+        }
+    }
+
+    return $schedule;
 }
 
 // Obține meciuri
@@ -86,8 +201,29 @@ function updateMatchOrder($matchId, $newOrder) {
 // Marchează un meci ca început
 function startMatchById($matchId) {
     global $pdo;
-    $stmt = $pdo->prepare("UPDATE matches SET status = 'live' WHERE id = ?");
-    return $stmt->execute([$matchId]);
+
+    $stmt = $pdo->prepare("SELECT status FROM matches WHERE id = ?");
+    $stmt->execute([$matchId]);
+    $status = $stmt->fetchColumn();
+
+    if ($status === false) {
+        return [
+            'success' => false,
+            'message' => 'Meciul selectat nu există.'
+        ];
+    }
+
+    if ($status === 'completed') {
+        return [
+            'success' => false,
+            'message' => 'Meciul este deja încheiat.'
+        ];
+    }
+
+    $pdo->prepare("UPDATE matches SET status = 'live' WHERE id = ?")
+        ->execute([$matchId]);
+
+    return ['success' => true];
 }
 
 // Adaugă punct
