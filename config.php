@@ -3,9 +3,9 @@ session_start();
 
 // Configurare bază de date
 define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_NAME', 'volei_turneu');
+define('DB_USER', 'dataconsult_scor');
+define('DB_PASS', 'max0766426369');
+define('DB_NAME', 'dataconsult_volei_turneu');
 
 // Conexiune la baza de date
 try {
@@ -29,4 +29,5 @@ function jsonResponse($data) {
     echo json_encode($data);
     exit;
 }
+
 ?>
