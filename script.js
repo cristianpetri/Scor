@@ -131,11 +131,22 @@ function generateMatches() {
     })
     .then(r => r.json())
     .then(data => {
-        if (data.success) {
-            alert('Meciuri generate cu succes!');
-            loadMatches();
-            switchView('matches');
+        if (!data.success) {
+            alert(data.message || 'Eroare la generarea meciurilor.');
+            return;
         }
+
+        let message = 'Meciuri generate cu succes!';
+        if (data.warning) {
+            message += `\n\n${data.warning}`;
+        }
+
+        alert(message);
+        loadMatches();
+        switchView('matches');
+    })
+    .catch(() => {
+        alert('Eroare la generarea meciurilor.');
     });
 }
 
@@ -208,9 +219,20 @@ function startMatch(matchId) {
         method: 'POST',
         body: formData
     })
-    .then(() => {
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success) {
+            alert(data.message || 'Nu am putut porni meciul.');
+            currentMatchId = null;
+            return;
+        }
+
         switchView('live');
         loadMatches();
+    })
+    .catch(() => {
+        alert('Nu am putut porni meciul.');
+        currentMatchId = null;
     });
 }
 
