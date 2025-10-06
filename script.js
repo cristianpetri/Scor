@@ -335,7 +335,7 @@ function renderLiveMatch(data) {
         return acc;
     }, {});
 
-    const pointsHistory = Object.keys(pointsBySet).length ? Object.entries(pointsBySet)
+    const pointsHistoryMarkup = Object.keys(pointsBySet).length ? Object.entries(pointsBySet)
         .map(([setNumber, setPoints]) => `
             <div class="set-history">
                 <div class="set-history-header">
@@ -353,25 +353,40 @@ function renderLiveMatch(data) {
             </div>
         `).join('') : '<p>Încă nu au fost înregistrate puncte.</p>';
 
-    const timelineMarkup = sortedSets.length ? sortedSets.map(set => {
-        const setNumber = Number(set.set_number);
+    const setNumbers = Array.from(new Set([
+        ...sortedSets.map(set => Number(set.set_number)),
+        ...Object.keys(pointsBySet).map(Number),
+        !isCompleted ? currentSetNumber : null
+    ].filter(Boolean))).sort((a, b) => a - b);
+
+    const timelineMarkup = setNumbers.length ? setNumbers.map(setNumber => {
+        const setDetails = sortedSets.find(set => Number(set.set_number) === setNumber) || null;
         const setPoints = (pointsBySet[setNumber] || []).slice().sort((a, b) => Number(a.point_number) - Number(b.point_number));
+        const highlightActive = !isCompleted && setNumber === currentSetNumber;
         const team1Badges = [];
         const team2Badges = [];
 
-        setPoints.forEach(point => {
+        setPoints.forEach((point, idx) => {
+            const badgeClasses = ['point-badge', point.scorer === 'team1' ? 'team1' : 'team2'];
+            if (highlightActive && idx === setPoints.length - 1) {
+                badgeClasses.push('latest');
+            }
+
             if (point.scorer === 'team1') {
-                team1Badges.push(`<span class="point-badge team1">${point.score_team1}</span>`);
+                team1Badges.push(`<span class="${badgeClasses.join(' ')}">${point.score_team1}</span>`);
             } else {
-                team2Badges.push(`<span class="point-badge team2">${point.score_team2}</span>`);
+                team2Badges.push(`<span class="${badgeClasses.join(' ')}">${point.score_team2}</span>`);
             }
         });
 
+        const displayScoreTeam1 = Number(setDetails?.score_team1 ?? (setPoints[setPoints.length - 1]?.score_team1 ?? 0));
+        const displayScoreTeam2 = Number(setDetails?.score_team2 ?? (setPoints[setPoints.length - 1]?.score_team2 ?? 0));
+
         return `
-            <div class="set-timeline">
+            <div class="set-timeline ${highlightActive ? 'set-timeline-live' : ''}">
                 <div class="set-timeline-header">
                     <span>Set ${setNumber}</span>
-                    <span>${set.score_team1}-${set.score_team2}</span>
+                    <span>${displayScoreTeam1}-${displayScoreTeam2}</span>
                 </div>
                 <div class="timeline-row">
                     <span class="team-label">${match.team1_name}</span>
@@ -448,9 +463,15 @@ function renderLiveMatch(data) {
                 ${timelineMarkup}
             </div>
         ` : `
-            <div class="points-history">
-                <h3>Istoric puncte</h3>
-                ${pointsHistory}
+            <div class="points-sections">
+                <div class="points-history">
+                    <h3>Istoric puncte</h3>
+                    ${pointsHistoryMarkup}
+                </div>
+                <div class="points-timeline live">
+                    <h3>Istoric puncte detaliat</h3>
+                    ${timelineMarkup}
+                </div>
             </div>
         `}
     `;
