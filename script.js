@@ -739,47 +739,105 @@ function loadStandings() {
 
 // Încarcă statistici
 function loadStats() {
-    Promise.all([
-        fetch('ajax.php?action=get_teams').then(r => r.json()),
-        fetch('ajax.php?action=get_matches').then(r => r.json())
-    ]).then(([teamsData, matchesData]) => {
-        const summaryContainer = document.getElementById('stats-summary');
-        const matchesContainer = document.getElementById('stats-matches');
-        if (!summaryContainer || !matchesContainer) return;
+    fetch('ajax.php?action=get_stats')
+        .then(r => r.json())
+        .then(data => {
+            const summaryContainer = document.getElementById('stats-summary');
+            const matchesContainer = document.getElementById('stats-matches');
+            if (!summaryContainer || !matchesContainer) return;
 
-        const totalTeams = teamsData.teams.length;
-        const completedMatches = matchesData.matches.filter(match => match.status === 'completed');
-        const totalPoints = teamsData.teams.reduce((acc, team) => acc + team.points_won, 0);
+            const totalTeams = (data.teams || []).length;
+            const completedMatches = (data.matches || []).filter(match => match.status === 'completed');
+            const totalPoints = (data.teams || []).reduce((acc, team) => acc + (team.points_won || 0), 0);
 
-        summaryContainer.innerHTML = `
-            <div class="stat-card">
-                <h3>Echipe</h3>
-                <p>${totalTeams}</p>
-            </div>
-            <div class="stat-card">
-                <h3>Meciuri Finalizate</h3>
-                <p>${completedMatches.length}</p>
-            </div>
-            <div class="stat-card">
-                <h3>Puncte Marcate</h3>
-                <p>${totalPoints}</p>
-            </div>
-        `;
-
-        if (matchesData.matches.length === 0) {
-            matchesContainer.innerHTML = '<p class="text-center">Nu există meciuri înregistrate.</p>';
-            return;
-        }
-
-        matchesContainer.innerHTML = matchesData.matches.map(match => `
-            <div class="match-stat ${match.status}">
-                <div>
-                    <strong>Meci #${match.match_order}</strong> &ndash; ${match.team1_name} vs ${match.team2_name}
+            summaryContainer.innerHTML = `
+                <div class="stat-card">
+                    <h3>Echipe</h3>
+                    <p>${totalTeams}</p>
                 </div>
-                <div>
-                    ${match.status === 'completed' ? `Scor final: ${match.sets_team1}-${match.sets_team2}` : 'Încă nu a fost jucat.'}
+                <div class="stat-card">
+                    <h3>Meciuri Finalizate</h3>
+                    <p>${completedMatches.length}</p>
                 </div>
-            </div>
-        `).join('');
-    });
+                <div class="stat-card">
+                    <h3>Puncte Marcate</h3>
+                    <p>${totalPoints}</p>
+                </div>
+            `;
+
+            if (!data.matches || data.matches.length === 0) {
+                matchesContainer.innerHTML = '<p class="text-center">Nu există meciuri înregistrate.</p>';
+                return;
+            }
+
+            matchesContainer.innerHTML = data.matches.map(match => {
+                const statusLabel = match.status === 'completed'
+                    ? `Finalizat${match.winner_name ? ` – Câștigător: ${match.winner_name}` : ''}`
+                    : match.status === 'live'
+                        ? 'În desfășurare'
+                        : 'Neînceput';
+
+                const finalScore = (match.sets_team1 || match.sets_team2) ? `${match.sets_team1}-${match.sets_team2}` : '0-0';
+
+                const setsHtml = (match.points_history || []).map(set => {
+                    const headerScore = `${set.score_team1}-${set.score_team2}`;
+                    const pointsRows = (set.points || []).map(point => {
+                        const scorerName = point.scorer === 'team1' ? match.team1_name : match.team2_name;
+                        return `
+                            <tr>
+                                <td>#${point.point_number}</td>
+                                <td>${scorerName}</td>
+                                <td>${point.score_team1}-${point.score_team2}</td>
+                            </tr>
+                        `;
+                    }).join('');
+
+                    return `
+                        <div class="set-history">
+                            <div class="set-history-header">
+                                <span>Set ${set.set_number}</span>
+                                <span class="set-history-score">${headerScore}</span>
+                            </div>
+                            ${pointsRows ? `
+                                <table class="points-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Punct</th>
+                                            <th>Echipă</th>
+                                            <th>Scor</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${pointsRows}
+                                    </tbody>
+                                </table>
+                            ` : '<p class="empty-points">Nu sunt puncte înregistrate pentru acest set.</p>'}
+                        </div>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="match-history-card ${match.status}">
+                        <div class="match-history-header">
+                            <div>
+                                <strong>Meci #${match.match_order}</strong> &ndash; ${match.team1_name} vs ${match.team2_name}
+                            </div>
+                            <div class="match-history-meta">
+                                <span>${statusLabel}</span>
+                                <span>Seturi: ${finalScore}</span>
+                            </div>
+                        </div>
+                        <div class="match-history-body">
+                            ${setsHtml || '<p class="empty-points">Nu există istoric de puncte pentru acest meci.</p>'}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        })
+        .catch(() => {
+            const matchesContainer = document.getElementById('stats-matches');
+            if (matchesContainer) {
+                matchesContainer.innerHTML = '<p class="text-center">Nu am putut încărca statisticile.</p>';
+            }
+        });
 }

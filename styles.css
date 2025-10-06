@@ -971,6 +971,99 @@ nav {
     color: #f59e0b;
 }
 
+.match-history-card {
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.match-history-card.pending {
+    border-left: 4px solid #f59e0b;
+}
+
+.match-history-card.live {
+    border-left: 4px solid #ef4444;
+}
+
+.match-history-card.completed {
+    border-left: 4px solid #10b981;
+}
+
+.match-history-header {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.match-history-meta {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.match-history-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.set-history {
+    background: #f9fafb;
+    border-radius: 10px;
+    padding: 16px;
+    border: 1px solid #e5e7eb;
+}
+
+.set-history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.set-history-score {
+    color: #4f46e5;
+}
+
+.points-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.points-table thead th {
+    background: #4f46e5;
+    color: #ffffff;
+    padding: 8px 10px;
+    text-align: left;
+    font-weight: 500;
+    font-size: 13px;
+}
+
+.points-table tbody td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 13px;
+}
+
+.points-table tbody tr:nth-child(even) {
+    background: #eef2ff;
+}
+
+.empty-points {
+    color: #6b7280;
+    font-style: italic;
+}
+
 table {
     width: 100%;
     border-collapse: collapse;
