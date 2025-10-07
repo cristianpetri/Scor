@@ -472,8 +472,6 @@ function renderLiveMatch(data) {
         const durationText = `⏱️ ${durationInfo.display}`;
         const displayScoreTeam1 = Number(setDetails?.score_team1 ?? (setPoints[totalColumns - 1]?.score_team1 ?? 0));
         const displayScoreTeam2 = Number(setDetails?.score_team2 ?? (setPoints[totalColumns - 1]?.score_team2 ?? 0));
-        const gridColumnsStyle = totalColumns ? ` style="--columns:${totalColumns}"` : '';
-
         if (!totalColumns) {
             return `
                 <div class="set-timeline ${highlightActive ? 'set-timeline-live' : ''}">
@@ -487,26 +485,17 @@ function renderLiveMatch(data) {
             `;
         }
 
-        const team1Badges = setPoints.map((point, idx) => {
-            if (point.scorer === 'team1') {
-                const badgeClasses = ['point-badge', 'team1'];
-                if (highlightActive && idx === latestIndex) {
-                    badgeClasses.push('latest');
-                }
-                return `<span class="${badgeClasses.join(' ')}">${point.score_team1}</span>`;
+        const sequenceBadges = setPoints.map((point, idx) => {
+            const scorerClass = point.scorer === 'team1' ? 'team1' : 'team2';
+            const badgeClasses = ['point-badge', scorerClass];
+            if (highlightActive && idx === latestIndex) {
+                badgeClasses.push('latest');
             }
-            return '<span class="point-badge placeholder"></span>';
-        }).join('');
-
-        const team2Badges = setPoints.map((point, idx) => {
-            if (point.scorer === 'team2') {
-                const badgeClasses = ['point-badge', 'team2'];
-                if (highlightActive && idx === latestIndex) {
-                    badgeClasses.push('latest');
-                }
-                return `<span class="${badgeClasses.join(' ')}">${point.score_team2}</span>`;
-            }
-            return '<span class="point-badge placeholder"></span>';
+            const displayScoreTeam1 = Number(point.score_team1 || 0);
+            const displayScoreTeam2 = Number(point.score_team2 || 0);
+            const scoreLabel = `${displayScoreTeam1}-${displayScoreTeam2}`;
+            const tooltip = `${match.team1_name} ${displayScoreTeam1} - ${match.team2_name} ${displayScoreTeam2}`;
+            return `<span class="${badgeClasses.join(' ')}" title="${tooltip}">${scoreLabel}</span>`;
         }).join('');
 
         return `
@@ -516,14 +505,11 @@ function renderLiveMatch(data) {
                     <div class="set-score">${displayScoreTeam1}<span>-</span>${displayScoreTeam2}</div>
                     <span class="set-duration" ${durationAttrs}>${durationText}</span>
                 </div>
-                <div class="timeline-row team1-row">
-                    <span class="team-label">${match.team1_name}</span>
-                    <div class="timeline-points"${gridColumnsStyle}>${team1Badges}</div>
+                <div class="timeline-team-info">
+                    <span class="team-label"><span class="team-dot team1"></span>${match.team1_name}</span>
+                    <span class="team-label"><span class="team-dot team2"></span>${match.team2_name}</span>
                 </div>
-                <div class="timeline-row team2-row">
-                    <span class="team-label">${match.team2_name}</span>
-                    <div class="timeline-points"${gridColumnsStyle}>${team2Badges}</div>
-                </div>
+                <div class="timeline-sequence">${sequenceBadges}</div>
             </div>
         `;
     }).join('') : '';
@@ -1004,31 +990,22 @@ function loadStats() {
                         ? set.points.slice().sort((a, b) => Number(a.point_number) - Number(b.point_number))
                         : [];
                     const totalColumns = points.length;
-                    const gridColumnsStyle = totalColumns ? ` style="--columns:${totalColumns}"` : '';
 
-                    const team1Badges = points.map(point => {
-                        if (point.scorer === 'team1') {
-                            return `<span class="point-badge team1">${point.score_team1}</span>`;
-                        }
-                        return '<span class="point-badge placeholder"></span>';
-                    }).join('');
-
-                    const team2Badges = points.map(point => {
-                        if (point.scorer === 'team2') {
-                            return `<span class="point-badge team2">${point.score_team2}</span>`;
-                        }
-                        return '<span class="point-badge placeholder"></span>';
+                    const sequenceBadges = points.map(point => {
+                        const scorerClass = point.scorer === 'team1' ? 'team1' : 'team2';
+                        const displayScoreTeam1 = Number(point.score_team1 || 0);
+                        const displayScoreTeam2 = Number(point.score_team2 || 0);
+                        const scoreLabel = `${displayScoreTeam1}-${displayScoreTeam2}`;
+                        const tooltip = `${match.team1_name} ${displayScoreTeam1} - ${match.team2_name} ${displayScoreTeam2}`;
+                        return `<span class="point-badge ${scorerClass}" title="${tooltip}">${scoreLabel}</span>`;
                     }).join('');
 
                     const pointsMarkup = totalColumns ? `
-                        <div class="timeline-row">
-                            <span class="team-label">${match.team1_name}</span>
-                            <div class="timeline-points"${gridColumnsStyle}>${team1Badges}</div>
+                        <div class="timeline-team-info">
+                            <span class="team-label"><span class="team-dot team1"></span>${match.team1_name}</span>
+                            <span class="team-label"><span class="team-dot team2"></span>${match.team2_name}</span>
                         </div>
-                        <div class="timeline-row">
-                            <span class="team-label">${match.team2_name}</span>
-                            <div class="timeline-points"${gridColumnsStyle}>${team2Badges}</div>
-                        </div>
+                        <div class="timeline-sequence">${sequenceBadges}</div>
                     ` : '<p class="empty-points">Nu sunt puncte înregistrate pentru acest set.</p>';
 
                     return `
