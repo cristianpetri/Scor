@@ -28,17 +28,37 @@ $defaultView = $isAdmin ? 'setup' : 'matches';
             </nav>
             <div class="auth-bar">
                 <?php if ($currentUser): ?>
-                    <span class="auth-status">Autentificat ca <strong><?= htmlspecialchars($currentUser['username'], ENT_QUOTES, 'UTF-8') ?></strong> (<?= htmlspecialchars($currentUser['role'], ENT_QUOTES, 'UTF-8') ?>)</span>
+                    <div class="auth-status-badge" aria-live="polite">
+                        <span class="auth-status-icon" aria-hidden="true">👤</span>
+                        <div class="auth-status-text">
+                            <span class="auth-status-label">Autentificat</span>
+                            <strong><?= htmlspecialchars($currentUser['username'], ENT_QUOTES, 'UTF-8') ?></strong>
+                            <span class="auth-status-role"><?= htmlspecialchars($currentUser['role'], ENT_QUOTES, 'UTF-8') ?></span>
+                        </div>
+                    </div>
                     <button id="logout-button" class="btn btn-secondary auth-button" type="button">🔓 Deconectare</button>
                 <?php else: ?>
-                    <form id="login-form" class="auth-form" autocomplete="off">
-                        <label class="sr-only" for="login-username">Utilizator</label>
-                        <input id="login-username" name="username" type="text" placeholder="Utilizator" required>
-                        <label class="sr-only" for="login-password">Parolă</label>
-                        <input id="login-password" name="password" type="password" placeholder="Parolă" required>
-                        <button type="submit" class="btn btn-primary auth-button">🔐 Autentificare</button>
-                    </form>
-                    <p id="login-feedback" class="auth-feedback" role="status" aria-live="polite"></p>
+                    <div class="auth-dropdown">
+                        <button id="auth-toggle" class="auth-toggle" type="button" aria-haspopup="true" aria-expanded="false">
+                            <span class="auth-toggle-icon" aria-hidden="true">🔐</span>
+                            <span class="auth-toggle-text">Autentificare</span>
+                        </button>
+                        <div id="auth-panel" class="auth-panel" role="dialog" aria-modal="false" hidden>
+                            <form id="login-form" class="auth-form" autocomplete="off">
+                                <div class="auth-form-group">
+                                    <label for="login-username">Utilizator</label>
+                                    <input id="login-username" name="username" type="text" placeholder="Ex: admin" required>
+                                </div>
+                                <div class="auth-form-group">
+                                    <label for="login-password">Parolă</label>
+                                    <input id="login-password" name="password" type="password" placeholder="Parolă" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary auth-button btn-full">Autentifică-te</button>
+                            </form>
+                            <p id="login-feedback" class="auth-feedback" role="status" aria-live="polite"></p>
+                            <p class="auth-hint">Cont implicit: <strong>admin</strong> / <strong>admin123</strong></p>
+                        </div>
+                    </div>
                 <?php endif; ?>
             </div>
         </header>
