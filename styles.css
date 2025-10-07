@@ -672,35 +672,18 @@ nav {
 }
 
 .timeline-points {
-    --columns: 1;
+    --badge-size: clamp(32px, 6vw, 46px);
     display: grid;
-    grid-template-columns: repeat(var(--columns), minmax(34px, auto));
+    grid-template-columns: repeat(auto-fit, minmax(var(--badge-size), 1fr));
     gap: 8px;
     justify-items: center;
     width: 100%;
-    overflow-x: auto;
-    padding-bottom: 6px;
-    scrollbar-gutter: stable;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(107, 114, 128, 0.35) transparent;
-}
-
-.timeline-points::-webkit-scrollbar {
-    height: 8px;
-}
-
-.timeline-points::-webkit-scrollbar-thumb {
-    background: rgba(107, 114, 128, 0.35);
-    border-radius: 999px;
-}
-
-.timeline-points::-webkit-scrollbar-track {
-    background: transparent;
 }
 
 .point-badge {
-    min-width: 34px;
-    height: 34px;
+    width: var(--badge-size, 34px);
+    height: var(--badge-size, 34px);
+    min-width: var(--badge-size, 34px);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -776,15 +759,11 @@ nav {
     }
 
     .timeline-points {
-        width: 100%;
-        --columns: auto;
-        grid-template-columns: repeat(auto-fit, minmax(32px, 1fr));
-        justify-items: stretch;
+        --badge-size: clamp(28px, 9vw, 40px);
+        grid-template-columns: repeat(auto-fit, minmax(var(--badge-size), 1fr));
     }
 
     .point-badge {
-        width: 100%;
-        max-width: 48px;
         margin: 0 auto;
     }
 }
