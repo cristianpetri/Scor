@@ -879,6 +879,10 @@ nav {
 @media (max-width: 600px) {
     .timeline-sequence {
         --badge-size: clamp(32px, 16vw, 44px);
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
     }
 
     .point-badge {
@@ -889,6 +893,10 @@ nav {
 @media (max-width: 480px) {
     .timeline-sequence {
         --badge-size: clamp(28px, 18vw, 38px);
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
     }
 
     .point-badge {
