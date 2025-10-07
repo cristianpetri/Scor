@@ -68,7 +68,11 @@ function getCurrentUser(): ?array {
 }
 
 function isAdmin(): bool {
-    return isset($_SESSION['role']) && $_SESSION['role'] === 'admin';
+    if (!isset($_SESSION['role'])) {
+        return false;
+    }
+
+    return strcasecmp((string)$_SESSION['role'], 'admin') === 0;
 }
 
 // Funcție pentru mesaje JSON

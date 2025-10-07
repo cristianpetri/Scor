@@ -68,5 +68,30 @@ Aplicație web în PHP pentru organizarea și monitorizarea unui turneu de volei
 - Ia în considerare protejarea accesului la aplicație cu autentificare dacă nu este destinată publicului larg.
 - Realizează periodic backup pentru baza de date (`mysqldump`) și fișiere.
 
+## Rezolvarea problemelor de autentificare
+Dacă după introducerea utilizatorului și parolei nu apar setările de administrator, verifică următoarele în phpMyAdmin:
+
+1. **Există utilizatorul `admin`?**
+   ```sql
+   SELECT id, username, role FROM users;
+   ```
+   Dacă lipsește, adaugă-l folosind o parolă pre-hashată (corespunzătoare lui `admin123`):
+   ```sql
+   INSERT INTO users (username, password_hash, role)
+   VALUES ('admin', '$2y$12$scN8jdYV.KqV9T1hI0TNY.v7zq2rIS/OXHOpoJSbkGYGhUS46kPcW', 'admin')
+   ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash), role = VALUES(role);
+   ```
+
+2. **Rolul este exact `admin`?**
+   Rolul se verifică fără a ține cont de majuscule, dar pentru claritate setează-l explicit:
+   ```sql
+   UPDATE users SET role = 'admin' WHERE username = 'admin';
+   ```
+
+3. **Sesțiunile sunt create corect?**
+   Dacă folosești un hosting ce cere HTTPS forțat, asigură-te că domeniul servește aplicația prin aceeași adresă (fără mix HTTP/HTTPS) pentru ca sesiunea să persiste.
+
+După aplicarea modificărilor, șterge cookie-urile domeniului din browser sau folosește o fereastră privată și autentifică-te din nou.
+
 ## Dezvoltare și contribuții
 Pull request-urile și sugestiile sunt binevenite. Înainte de a propune modificări majore, deschide un issue pentru discuții.
