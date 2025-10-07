@@ -3,7 +3,52 @@ require_once 'functions.php';
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
+$adminActions = [
+    'add_team',
+    'delete_team',
+    'generate_matches',
+    'update_match_order',
+    'start_match',
+    'add_point',
+    'remove_last_point'
+];
+
+if (in_array($action, $adminActions, true) && !isAdmin()) {
+    jsonResponse([
+        'success' => false,
+        'message' => 'Autentificare de administrator necesară pentru această acțiune.',
+        'error' => 'unauthorized'
+    ]);
+}
+
 switch($action) {
+    case 'login':
+        $username = trim($_POST['username'] ?? '');
+        $password = $_POST['password'] ?? '';
+
+        if ($username === '' || $password === '') {
+            jsonResponse([
+                'success' => false,
+                'message' => 'Completează utilizatorul și parola.'
+            ]);
+        }
+
+        $result = loginUser($username, $password);
+        jsonResponse($result);
+        break;
+
+    case 'logout':
+        logoutUser();
+        jsonResponse(['success' => true]);
+        break;
+
+    case 'get_current_user':
+        jsonResponse([
+            'success' => true,
+            'user' => getCurrentUser()
+        ]);
+        break;
+
     case 'add_team':
         $name = trim($_POST['name'] ?? '');
         if ($name) {
