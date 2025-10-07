@@ -3,6 +3,7 @@ let currentMatchId = null;
 let currentView = 'setup';
 let liveTimerInterval = null;
 let lastStandings = [];
+let lastStatsData = { teams: [], matches: [] };
 
 function stopLiveTimers() {
     if (liveTimerInterval) {
@@ -868,11 +869,17 @@ function loadStats() {
         .then(data => {
             const summaryContainer = document.getElementById('stats-summary');
             const matchesContainer = document.getElementById('stats-matches');
+            const teamsContainer = document.getElementById('stats-teams');
             if (!summaryContainer || !matchesContainer) return;
 
-            const totalTeams = (data.teams || []).length;
-            const completedMatches = (data.matches || []).filter(match => match.status === 'completed');
-            const totalPoints = (data.teams || []).reduce((acc, team) => acc + (team.points_won || 0), 0);
+            lastStatsData = {
+                teams: Array.isArray(data.teams) ? data.teams : [],
+                matches: Array.isArray(data.matches) ? data.matches : []
+            };
+
+            const totalTeams = lastStatsData.teams.length;
+            const completedMatches = lastStatsData.matches.filter(match => match.status === 'completed');
+            const totalPoints = lastStatsData.teams.reduce((acc, team) => acc + (team.points_won || 0), 0);
 
             summaryContainer.innerHTML = `
                 <div class="stat-card">
@@ -888,6 +895,79 @@ function loadStats() {
                     <p>${totalPoints}</p>
                 </div>
             `;
+
+            if (teamsContainer) {
+                if (!lastStatsData.teams.length) {
+                    teamsContainer.innerHTML = '<p class="text-center">Nu există echipe înregistrate.</p>';
+                } else {
+                    const teamCards = lastStatsData.teams.map(team => {
+                        const matchesPlayed = Number(team.wins || 0) + Number(team.losses || 0);
+                        const setsDiff = Number(team.sets_won || 0) - Number(team.sets_lost || 0);
+                        const pointsDiff = Number(team.points_won || 0) - Number(team.points_lost || 0);
+                        const formatDiff = value => {
+                            if (value > 0) return `+${value}`;
+                            if (value === 0) return '0';
+                            return `${value}`;
+                        };
+
+                        const badges = matchesPlayed
+                            ? [
+                                ...Array(Number(team.wins || 0)).fill('win'),
+                                ...Array(Number(team.losses || 0)).fill('loss')
+                            ].map(result => {
+                                const isWin = result === 'win';
+                                const classes = ['point-badge', isWin ? 'team1' : 'team2'];
+                                const label = isWin ? 'V' : 'Î';
+                                const title = isWin ? 'Victorie' : 'Înfrângere';
+                                return `<span class="${classes.join(' ')}" title="${title}">${label}</span>`;
+                            }).join('')
+                            : '';
+
+                        const badgesMarkup = matchesPlayed
+                            ? `<div class="team-results-badges" aria-label="Rezultate meciuri">${badges}</div>`
+                            : '<p class="no-team-results">Nu există meciuri jucate.</p>';
+
+                        return `
+                            <div class="team-stat-card">
+                                <div class="team-stat-header">
+                                    <h4>${team.name}</h4>
+                                    <span class="team-stat-record">${Number(team.wins || 0)}-${Number(team.losses || 0)}</span>
+                                </div>
+                                <div class="team-stat-meta">
+                                    <span class="stat-pill">${Number(team.ranking_points || 0)} pct</span>
+                                    <span class="stat-pill matches">${matchesPlayed} meci${matchesPlayed === 1 ? '' : 'uri'} jucate</span>
+                                </div>
+                                <div class="team-stat-results">
+                                    ${badgesMarkup}
+                                </div>
+                                <div class="team-stat-details">
+                                    <div class="team-stat-detail">
+                                        <span class="detail-label">Seturi</span>
+                                        <span class="detail-value">${Number(team.sets_won || 0)}-${Number(team.sets_lost || 0)} (<span class="diff ${setsDiff > 0 ? 'positive' : setsDiff < 0 ? 'negative' : ''}">${formatDiff(setsDiff)}</span>)</span>
+                                    </div>
+                                    <div class="team-stat-detail">
+                                        <span class="detail-label">Raport seturi</span>
+                                        <span class="detail-value">${team.set_ratio_display || '0'}</span>
+                                    </div>
+                                    <div class="team-stat-detail">
+                                        <span class="detail-label">Puncte</span>
+                                        <span class="detail-value">${Number(team.points_won || 0)}-${Number(team.points_lost || 0)} (<span class="diff ${pointsDiff > 0 ? 'positive' : pointsDiff < 0 ? 'negative' : ''}">${formatDiff(pointsDiff)}</span>)</span>
+                                    </div>
+                                    <div class="team-stat-detail">
+                                        <span class="detail-label">Raport puncte</span>
+                                        <span class="detail-value">${team.point_ratio_display || '0'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+
+                    teamsContainer.innerHTML = `
+                        <h3>Statistici pe echipe</h3>
+                        <div class="team-stats-grid">${teamCards}</div>
+                    `;
+                }
+            }
 
             if (!data.matches || data.matches.length === 0) {
                 matchesContainer.innerHTML = '<p class="text-center">Nu există meciuri înregistrate.</p>';
@@ -960,8 +1040,105 @@ function loadStats() {
         })
         .catch(() => {
             const matchesContainer = document.getElementById('stats-matches');
+            const teamsContainer = document.getElementById('stats-teams');
+            lastStatsData = { teams: [], matches: [] };
             if (matchesContainer) {
                 matchesContainer.innerHTML = '<p class="text-center">Nu am putut încărca statisticile.</p>';
             }
+            if (teamsContainer) {
+                teamsContainer.innerHTML = '<p class="text-center">Nu am putut încărca statisticile echipelor.</p>';
+            }
+        });
+}
+
+function buildStatsShareMessage() {
+    const totalTeams = lastStatsData.teams.length;
+    const completedMatches = lastStatsData.matches.filter(match => match.status === 'completed').length;
+    const totalPoints = lastStatsData.teams.reduce((acc, team) => acc + (team.points_won || 0), 0);
+
+    const header = `Statistici turneu volei:\nEchipe: ${totalTeams}\nMeciuri finalizate: ${completedMatches}\nPuncte marcate: ${totalPoints}`;
+
+    if (!totalTeams) {
+        return header;
+    }
+
+    const formatDiff = value => (value > 0 ? `+${value}` : value === 0 ? '0' : `${value}`);
+
+    const teamLines = lastStatsData.teams.map(team => {
+        const matchesPlayed = Number(team.wins || 0) + Number(team.losses || 0);
+        const setsDiff = Number(team.sets_won || 0) - Number(team.sets_lost || 0);
+        const pointsDiff = Number(team.points_won || 0) - Number(team.points_lost || 0);
+        return `${team.name}: ${team.ranking_points} pct | Victorii: ${team.wins}-${team.losses} (${matchesPlayed} meci${matchesPlayed === 1 ? '' : 'uri'}) | Seturi: ${team.sets_won}-${team.sets_lost} (${formatDiff(setsDiff)}) | Puncte: ${team.points_won}-${team.points_lost} (${formatDiff(pointsDiff)})`;
+    });
+
+    return `${header}\n\nEchipe:\n${teamLines.join('\n')}`;
+}
+
+function captureStatsCard() {
+    const card = document.querySelector('#view-stats .card');
+
+    if (!card) {
+        return Promise.reject(new Error('Nu am găsit zona de statistici.'));
+    }
+
+    card.classList.add('stats-export-mode');
+
+    return html2canvas(card, {
+        backgroundColor: '#ffffff',
+        scale: window.devicePixelRatio < 2 ? 2 : window.devicePixelRatio
+    }).then(canvas => {
+        card.classList.remove('stats-export-mode');
+        return canvas;
+    }).catch(error => {
+        card.classList.remove('stats-export-mode');
+        throw error;
+    });
+}
+
+function exportStatsImage() {
+    captureStatsCard()
+        .then(canvas => {
+            const fileName = `statistici-${new Date().toISOString().slice(0, 10)}.jpg`;
+            const link = document.createElement('a');
+            link.href = canvas.toDataURL('image/jpeg', 0.92);
+            link.download = fileName;
+            link.click();
+        })
+        .catch(() => {
+            alert('Nu am putut genera imaginea pentru export.');
+        });
+}
+
+function shareStatsWhatsApp() {
+    if (!lastStatsData.teams.length && !lastStatsData.matches.length) {
+        alert('Nu există date în statistici pentru a fi partajate.');
+        return;
+    }
+
+    const fileName = `statistici-${new Date().toISOString().slice(0, 10)}.jpg`;
+    const fallbackShare = () => {
+        const message = buildStatsShareMessage();
+        const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
+        window.open(url, '_blank');
+    };
+
+    captureStatsCard()
+        .then(canvas => canvasToJpegBlob(canvas))
+        .then(blob => {
+            const file = new File([blob], fileName, { type: 'image/jpeg' });
+
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                navigator.share({
+                    files: [file],
+                    title: 'Statistici turneu volei',
+                    text: 'Statistici turneu volei'
+                }).catch(fallbackShare);
+                return;
+            }
+
+            fallbackShare();
+        })
+        .catch(() => {
+            alert('Nu am putut genera imaginea pentru partajare.');
         });
 }
