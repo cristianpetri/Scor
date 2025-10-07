@@ -371,14 +371,8 @@ nav {
     display: flex;
     flex-direction: column;
     gap: 20px;
-}
-
-@media (min-width: 768px) {
-    .scoreboard-header {
-        flex-direction: row;
-        align-items: flex-end;
-        justify-content: space-between;
-    }
+    align-items: center;
+    text-align: center;
 }
 
 .scoreboard-title h2 {
@@ -386,6 +380,7 @@ nav {
     font-weight: 800;
     color: #111827;
     margin-bottom: 6px;
+    text-align: center;
 }
 
 .scoreboard-title p {
@@ -393,6 +388,7 @@ nav {
     color: #1f2937;
     margin-bottom: 4px;
     line-height: 1.4;
+    text-align: center;
 }
 
 .scoreboard-subtitle {
@@ -402,18 +398,16 @@ nav {
     font-size: 13px;
     color: #6b7280;
     margin-top: 6px;
+    text-align: center;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .scoreboard-sets {
     display: flex;
     gap: 16px;
     flex-wrap: wrap;
-}
-
-@media (min-width: 768px) {
-    .scoreboard-sets {
-        justify-content: flex-end;
-    }
+    justify-content: center;
 }
 
 .set-counter {
@@ -456,6 +450,7 @@ nav {
     display: flex;
     gap: 24px;
     flex-wrap: wrap;
+    justify-content: center;
 }
 
 .scoreboard-meta {
@@ -685,10 +680,10 @@ nav {
 }
 
 .set-timeline-header {
-    display: grid;
-    grid-template-columns: 1fr auto auto;
-    align-items: center;
-    gap: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
     font-weight: 700;
     color: #1f2937;
 }
@@ -710,6 +705,11 @@ nav {
     font-weight: 800;
     font-variant-numeric: tabular-nums;
     color: #111827;
+}
+
+.set-timeline-header .set-score,
+.set-timeline-header .set-duration {
+    align-self: flex-start;
 }
 
 .set-score span {
@@ -842,13 +842,7 @@ nav {
     }
 
     .set-timeline-header {
-        grid-template-columns: 1fr;
         gap: 6px;
-    }
-
-    .set-timeline-header .set-score,
-    .set-timeline-header .set-duration {
-        justify-self: flex-start;
     }
 
     .timeline-team-info {
