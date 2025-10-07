@@ -1122,6 +1122,14 @@ table tbody tr:first-child {
     margin-bottom: 20px;
 }
 
+.standings-export-mode .standings-actions {
+    display: none !important;
+}
+
+.standings-export-mode {
+    position: relative;
+}
+
 .standings-table {
     position: relative;
 }

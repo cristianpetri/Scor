@@ -741,12 +741,7 @@ function loadStandings() {
         });
 }
 
-function shareStandingsWhatsApp() {
-    if (!lastStandings.length) {
-        alert('Nu există date în clasament pentru a fi partajate.');
-        return;
-    }
-
+function buildStandingsShareMessage() {
     const lines = lastStandings.map((team, idx) => {
         const rank = idx + 1;
         const setsDiff = team.sets_won - team.sets_lost;
@@ -756,31 +751,114 @@ function shareStandingsWhatsApp() {
         return `${rank}. ${team.name} – ${team.ranking_points} pct | Victorii: ${team.wins}-${team.losses} | Seturi: ${team.sets_won}-${team.sets_lost} (${formatDiff(setsDiff)}) | Raport seturi: ${team.set_ratio_display} | Puncte: ${team.points_won}-${team.points_lost} (${formatDiff(pointsDiff)}) | Raport puncte: ${team.point_ratio_display}`;
     });
 
-    const message = `Clasament turneu volei:\n${lines.join('\n')}`;
-    const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
+    return `Clasament turneu volei:\n${lines.join('\n')}`;
 }
 
-function exportTable(containerId, fileName) {
-    const container = document.getElementById(containerId);
-    if (!container) {
-        alert('Nu am găsit tabelul pentru export.');
-        return;
+function captureStandingsCard() {
+    const card = document.querySelector('#view-standings .card');
+
+    if (!card) {
+        return Promise.reject(new Error('Nu am găsit zona de clasament.'));
     }
 
-    const downloadName = `${fileName || 'clasament'}-${new Date().toISOString().slice(0, 10)}.jpg`;
+    card.classList.add('standings-export-mode');
 
-    html2canvas(container, {
+    return html2canvas(card, {
         backgroundColor: '#ffffff',
         scale: window.devicePixelRatio < 2 ? 2 : window.devicePixelRatio
     }).then(canvas => {
-        const link = document.createElement('a');
-        link.href = canvas.toDataURL('image/jpeg', 0.9);
-        link.download = downloadName;
-        link.click();
-    }).catch(() => {
-        alert('Nu am putut genera imaginea pentru export.');
+        card.classList.remove('standings-export-mode');
+        return canvas;
+    }).catch(error => {
+        card.classList.remove('standings-export-mode');
+        throw error;
     });
+}
+
+function canvasToJpegBlob(canvas) {
+    return new Promise((resolve, reject) => {
+        if (canvas.toBlob) {
+            canvas.toBlob(blob => {
+                if (blob) {
+                    resolve(blob);
+                } else {
+                    reject(new Error('Nu am putut genera datele imaginii.'));
+                }
+            }, 'image/jpeg', 0.92);
+            return;
+        }
+
+        try {
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+            const base64 = dataUrl.split(',')[1];
+            const binary = atob(base64);
+            const length = binary.length;
+            const buffer = new ArrayBuffer(length);
+            const view = new Uint8Array(buffer);
+
+            for (let i = 0; i < length; i += 1) {
+                view[i] = binary.charCodeAt(i);
+            }
+
+            resolve(new Blob([buffer], { type: 'image/jpeg' }));
+        } catch (error) {
+            reject(error);
+        }
+    });
+}
+
+function exportStandingsImage() {
+    if (!lastStandings.length) {
+        alert('Nu există date în clasament pentru export.');
+        return;
+    }
+
+    const fileName = `clasament-${new Date().toISOString().slice(0, 10)}.jpg`;
+
+    captureStandingsCard()
+        .then(canvas => {
+            const link = document.createElement('a');
+            link.href = canvas.toDataURL('image/jpeg', 0.92);
+            link.download = fileName;
+            link.click();
+        })
+        .catch(() => {
+            alert('Nu am putut genera imaginea pentru export.');
+        });
+}
+
+function shareStandingsWhatsApp() {
+    if (!lastStandings.length) {
+        alert('Nu există date în clasament pentru a fi partajate.');
+        return;
+    }
+
+    const fileName = `clasament-${new Date().toISOString().slice(0, 10)}.jpg`;
+    const fallbackShare = () => {
+        const message = buildStandingsShareMessage();
+        const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
+        window.open(url, '_blank');
+    };
+
+    captureStandingsCard()
+        .then(canvas => canvasToJpegBlob(canvas))
+        .then(blob => {
+            const file = new File([blob], fileName, { type: 'image/jpeg' });
+
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                navigator.share({
+                    files: [file],
+                    title: 'Clasament turneu volei',
+                    text: 'Clasament turneu volei'
+                }).catch(fallbackShare);
+                return;
+            }
+
+            fallbackShare();
+        })
+        .catch(() => {
+            alert('Nu am putut genera imaginea pentru partajare.');
+        });
 }
 
 // Încarcă statistici
