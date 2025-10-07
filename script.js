@@ -5,6 +5,80 @@ let liveTimerInterval = null;
 let lastStandings = [];
 let lastStatsData = { teams: [], matches: [] };
 
+const APP_TITLE_STORAGE_KEY = 'tournament_app_title';
+const DEFAULT_APP_TITLE = '🏐 Manager Turneu Volei';
+
+function getStoredAppTitle() {
+    try {
+        const storedTitle = localStorage.getItem(APP_TITLE_STORAGE_KEY);
+        if (storedTitle && storedTitle.trim()) {
+            return storedTitle.trim();
+        }
+    } catch (error) {
+        console.warn('Nu am putut accesa titlul salvat:', error);
+    }
+    return DEFAULT_APP_TITLE;
+}
+
+function applyAppTitle(title) {
+    const sanitizedTitle = title && title.trim() ? title.trim() : DEFAULT_APP_TITLE;
+    const heading = document.getElementById('app-title');
+
+    if (heading) {
+        heading.textContent = sanitizedTitle;
+    }
+
+    document.title = sanitizedTitle;
+}
+
+function initializeAppTitle() {
+    const storedTitle = getStoredAppTitle();
+    applyAppTitle(storedTitle);
+
+    const input = document.getElementById('app-title-input');
+    if (input) {
+        input.value = storedTitle;
+    }
+}
+
+function showAppTitleFeedback(message) {
+    const feedback = document.getElementById('app-title-feedback');
+    if (!feedback) return;
+
+    feedback.textContent = message;
+    feedback.classList.add('visible');
+
+    setTimeout(() => {
+        feedback.textContent = '';
+        feedback.classList.remove('visible');
+    }, 2500);
+}
+
+function saveAppTitle() {
+    const input = document.getElementById('app-title-input');
+    if (!input) return;
+
+    const value = input.value.trim();
+    const finalTitle = value || DEFAULT_APP_TITLE;
+
+    try {
+        localStorage.setItem(APP_TITLE_STORAGE_KEY, finalTitle);
+    } catch (error) {
+        console.warn('Nu am putut salva titlul personalizat:', error);
+    }
+
+    applyAppTitle(finalTitle);
+    input.value = finalTitle;
+    showAppTitleFeedback('Titlul a fost salvat!');
+}
+
+function handleAppTitleKeydown(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        saveAppTitle();
+    }
+}
+
 function stopLiveTimers() {
     if (liveTimerInterval) {
         clearInterval(liveTimerInterval);
@@ -98,6 +172,13 @@ function durationAttributes(info) {
 
 // Inițializare după încărcarea paginii
 document.addEventListener('DOMContentLoaded', () => {
+    initializeAppTitle();
+
+    const titleInput = document.getElementById('app-title-input');
+    if (titleInput) {
+        titleInput.addEventListener('keydown', handleAppTitleKeydown);
+    }
+
     loadTeams();
     loadMatches();
 });

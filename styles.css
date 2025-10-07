@@ -90,6 +90,25 @@ nav {
     gap: 10px;
 }
 
+.form-hint {
+    margin-top: 8px;
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.form-feedback {
+    margin-top: 6px;
+    font-size: 14px;
+    color: #059669;
+    min-height: 20px;
+    transition: opacity 0.2s ease;
+    opacity: 0;
+}
+
+.form-feedback.visible {
+    opacity: 1;
+}
+
 .input-group input {
     flex: 1;
     padding: 12px;
@@ -854,6 +873,35 @@ nav {
     .timeline-sequence {
         --badge-size: clamp(44px, 18vw, 58px);
         grid-template-columns: repeat(auto-fit, minmax(var(--badge-size), 1fr));
+    }
+}
+
+@media (max-width: 600px) {
+    .timeline-sequence {
+        --badge-size: clamp(32px, 16vw, 44px);
+    }
+
+    .point-badge {
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .timeline-sequence {
+        --badge-size: clamp(28px, 18vw, 38px);
+    }
+
+    .point-badge {
+        width: var(--badge-size, 28px);
+        height: var(--badge-size, 28px);
+        min-width: var(--badge-size, 28px);
+        font-size: 11px;
+    }
+
+    .team-results-badges .point-badge {
+        min-width: 26px;
+        height: 26px;
+        font-size: 11px;
     }
 }
 
