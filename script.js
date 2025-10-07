@@ -983,42 +983,56 @@ function loadStats() {
 
                 const finalScore = (match.sets_team1 || match.sets_team2) ? `${match.sets_team1}-${match.sets_team2}` : '0-0';
 
-                const setsHtml = (match.points_history || []).map(set => {
-                    const headerScore = `${set.score_team1}-${set.score_team2}`;
-                    const pointsRows = (set.points || []).map(point => {
-                        const scorerName = point.scorer === 'team1' ? match.team1_name : match.team2_name;
-                        return `
-                            <tr>
-                                <td>#${point.point_number}</td>
-                                <td>${scorerName}</td>
-                                <td>${point.score_team1}-${point.score_team2}</td>
-                            </tr>
-                        `;
+                const sortedSets = Array.isArray(match.points_history)
+                    ? match.points_history.slice().sort((a, b) => Number(a.set_number) - Number(b.set_number))
+                    : [];
+
+                const setsHtml = sortedSets.map(set => {
+                    const points = Array.isArray(set.points)
+                        ? set.points.slice().sort((a, b) => Number(a.point_number) - Number(b.point_number))
+                        : [];
+                    const totalColumns = points.length;
+                    const gridColumnsStyle = totalColumns ? ` style="--columns:${totalColumns}"` : '';
+
+                    const team1Badges = points.map(point => {
+                        if (point.scorer === 'team1') {
+                            return `<span class="point-badge team1">${point.score_team1}</span>`;
+                        }
+                        return '<span class="point-badge placeholder"></span>';
                     }).join('');
 
+                    const team2Badges = points.map(point => {
+                        if (point.scorer === 'team2') {
+                            return `<span class="point-badge team2">${point.score_team2}</span>`;
+                        }
+                        return '<span class="point-badge placeholder"></span>';
+                    }).join('');
+
+                    const pointsMarkup = totalColumns ? `
+                        <div class="timeline-row">
+                            <span class="team-label">${match.team1_name}</span>
+                            <div class="timeline-points"${gridColumnsStyle}>${team1Badges}</div>
+                        </div>
+                        <div class="timeline-row">
+                            <span class="team-label">${match.team2_name}</span>
+                            <div class="timeline-points"${gridColumnsStyle}>${team2Badges}</div>
+                        </div>
+                    ` : '<p class="empty-points">Nu sunt puncte înregistrate pentru acest set.</p>';
+
                     return `
-                        <div class="set-history">
-                            <div class="set-history-header">
-                                <span>Set ${set.set_number}</span>
-                                <span class="set-history-score">${headerScore}</span>
+                        <div class="set-timeline">
+                            <div class="set-timeline-header">
+                                <span class="set-title">Set ${set.set_number}</span>
+                                <span class="set-score">${Number(set.score_team1 || 0)}-${Number(set.score_team2 || 0)}</span>
                             </div>
-                            ${pointsRows ? `
-                                <table class="points-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Punct</th>
-                                            <th>Echipă</th>
-                                            <th>Scor</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${pointsRows}
-                                    </tbody>
-                                </table>
-                            ` : '<p class="empty-points">Nu sunt puncte înregistrate pentru acest set.</p>'}
+                            ${pointsMarkup}
                         </div>
                     `;
                 }).join('');
+
+                const historyBody = setsHtml
+                    ? `<div class="points-timeline">${setsHtml}</div>`
+                    : '<p class="empty-points">Nu există istoric de puncte pentru acest meci.</p>';
 
                 return `
                     <div class="match-history-card ${match.status}">
@@ -1032,7 +1046,7 @@ function loadStats() {
                             </div>
                         </div>
                         <div class="match-history-body">
-                            ${setsHtml || '<p class="empty-points">Nu există istoric de puncte pentru acest meci.</p>'}
+                            ${historyBody}
                         </div>
                     </div>
                 `;
