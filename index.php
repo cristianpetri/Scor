@@ -99,7 +99,16 @@
         <div id="view-stats" class="view">
             <div class="card">
                 <h2>📊 Statistici Detaliate</h2>
+                <div class="stats-actions">
+                    <button onclick="exportStatsImage()" class="btn btn-secondary">
+                        📸 Export JPG
+                    </button>
+                    <button onclick="shareStatsWhatsApp()" class="btn btn-whatsapp">
+                        📤 Distribuie pe WhatsApp
+                    </button>
+                </div>
                 <div id="stats-summary" class="stats-grid"></div>
+                <div id="stats-teams" class="team-stats-section"></div>
                 <h3>Istoric Meciuri Complete</h3>
                 <div id="stats-matches"></div>
             </div>

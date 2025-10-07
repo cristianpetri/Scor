@@ -974,6 +974,148 @@ nav {
     text-align: center;
 }
 
+.stats-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.stats-export-mode .stats-actions {
+    display: none !important;
+}
+
+.team-stats-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 32px;
+}
+
+.team-stats-section h3 {
+    margin: 0;
+    color: #1f2937;
+}
+
+.team-stats-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.team-stat-card {
+    background: #ffffff;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    border-radius: 14px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+
+.team-stat-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.team-stat-header h4 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.team-stat-record {
+    font-weight: 700;
+    font-size: 14px;
+    color: #1d4ed8;
+    background: rgba(59, 130, 246, 0.1);
+    padding: 4px 10px;
+    border-radius: 999px;
+}
+
+.team-stat-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 13px;
+    color: #4b5563;
+}
+
+.team-stat-meta .stat-pill {
+    background: rgba(99, 102, 241, 0.12);
+    color: #4338ca;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+}
+
+.team-stat-meta .stat-pill.matches {
+    background: rgba(239, 68, 68, 0.12);
+    color: #b91c1c;
+}
+
+.team-stat-results {
+    min-height: 42px;
+}
+
+.team-results-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.team-results-badges .point-badge {
+    min-width: 34px;
+    height: 34px;
+    font-size: 13px;
+}
+
+.no-team-results {
+    margin: 0;
+    color: #6b7280;
+    font-style: italic;
+}
+
+.team-stat-details {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.team-stat-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.detail-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6b7280;
+}
+
+.detail-value {
+    font-weight: 600;
+    color: #111827;
+}
+
+.detail-value .diff {
+    font-weight: 700;
+}
+
+.detail-value .diff.positive {
+    color: #16a34a;
+}
+
+.detail-value .diff.negative {
+    color: #dc2626;
+}
+
 .stat-card .label {
     color: #6b7280;
     font-size: 14px;
