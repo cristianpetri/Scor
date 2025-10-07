@@ -8,6 +8,8 @@ Aplicație web în PHP pentru organizarea și monitorizarea unui turneu de volei
 - Urmărire live a punctelor și seturilor, inclusiv istoric detaliat al fiecărui punct.
 - Clasament general cu actualizare automată a statisticilor (victorii, seturi/puncte câștigate/pierdute).
 - Export rapid al clasamentului în format imagine (folosind `html2canvas`).
+- Partajare instantă a clasamentului pe WhatsApp în format text.
+- Explicații integrate pentru regulile de calcul ale clasamentului.
 
 ## Structura proiectului
 ```

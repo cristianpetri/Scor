@@ -74,10 +74,24 @@
         <div id="view-standings" class="view">
             <div class="card">
                 <h2>🏆 Clasament General</h2>
-                <button onclick="exportTable('standings-table', 'clasament')" class="btn btn-secondary mb-3">
-                    📸 Export JPG
-                </button>
-                <div id="standings-table"></div>
+                <div class="standings-actions">
+                    <button onclick="exportTable('standings-table', 'clasament')" class="btn btn-secondary">
+                        📸 Export JPG
+                    </button>
+                    <button onclick="shareStandingsWhatsApp()" class="btn btn-whatsapp">
+                        📤 Distribuie pe WhatsApp
+                    </button>
+                </div>
+                <div id="standings-table" class="standings-table"></div>
+                <div class="standings-info">
+                    <h3>ℹ️ Cum se calculează clasamentul</h3>
+                    <ul>
+                        <li><strong>Puncte clasament</strong>: fiecare victorie valorează 2 puncte, iar o înfrângere adaugă 1 punct pentru participare.</li>
+                        <li><strong>Raport seturi</strong>: seturile câștigate împărțite la seturile pierdute (∞ dacă nu ai pierdut niciun set).</li>
+                        <li><strong>Raport puncte</strong>: punctele câștigate împărțite la cele pierdute (∞ dacă nu ai pierdut niciun punct).</li>
+                        <li><strong>Departajare</strong>: se aplică în ordine – puncte clasament, raport seturi, raport puncte, diferență de seturi, diferență de puncte, apoi ordine alfabetică.</li>
+                    </ul>
+                </div>
             </div>
         </div>
 
