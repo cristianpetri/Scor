@@ -2,7 +2,7 @@
 require_once 'functions.php';
 
 $currentUser = getCurrentUser();
-$isAdmin = $currentUser && ($currentUser['role'] ?? '') === 'admin';
+$isAdmin = isAdmin();
 $defaultView = $isAdmin ? 'setup' : 'matches';
 ?>
 <!DOCTYPE html>
