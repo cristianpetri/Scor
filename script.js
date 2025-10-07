@@ -2,6 +2,7 @@
 let currentMatchId = null;
 let currentView = 'setup';
 let liveTimerInterval = null;
+let lastStandings = [];
 
 function stopLiveTimers() {
     if (liveTimerInterval) {
@@ -666,44 +667,120 @@ function loadStandings() {
             const container = document.getElementById('standings-table');
             if (!container) return;
 
-            if (data.teams.length === 0) {
+            lastStandings = Array.isArray(data.teams) ? data.teams : [];
+
+            if (lastStandings.length === 0) {
                 container.innerHTML = '<p class="text-center">Nu există echipe înregistrate.</p>';
                 return;
             }
 
             container.innerHTML = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Echipă</th>
-                            <th>Puncte Clasament</th>
-                            <th>Victorii</th>
-                            <th>Înfrângeri</th>
-                            <th>Seturi (+/-)</th>
-                            <th>Raport Seturi</th>
-                            <th>Puncte (+/-)</th>
-                            <th>Raport Puncte</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${data.teams.map((team, idx) => `
+                <div class="standings-table-wrapper">
+                    <table>
+                        <thead>
                             <tr>
-                                <td>${idx + 1}</td>
-                                <td>${team.name}</td>
-                                <td>${team.ranking_points}</td>
-                                <td>${team.wins}</td>
-                                <td>${team.losses}</td>
-                                <td>${team.sets_won}-${team.sets_lost}</td>
-                                <td>${team.set_ratio_display}</td>
-                                <td>${team.points_won}-${team.points_lost}</td>
-                                <td>${team.point_ratio_display}</td>
+                                <th>#</th>
+                                <th>Echipă</th>
+                                <th>Puncte Clasament</th>
+                                <th>Victorii</th>
+                                <th>Înfrângeri</th>
+                                <th>Seturi (+/-)</th>
+                                <th>Raport Seturi</th>
+                                <th>Puncte (+/-)</th>
+                                <th>Raport Puncte</th>
                             </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            ${lastStandings.map((team, idx) => {
+                                const rank = idx + 1;
+                                const medalClass = rank === 1
+                                    ? 'standings-gold'
+                                    : rank === 2
+                                        ? 'standings-silver'
+                                        : rank === 3
+                                            ? 'standings-bronze'
+                                            : '';
+                                const setsDiff = team.sets_won - team.sets_lost;
+                                const pointsDiff = team.points_won - team.points_lost;
+                                const formatDiff = value => {
+                                    if (value > 0) return `+${value}`;
+                                    if (value === 0) return '0';
+                                    return `${value}`;
+                                };
+
+                                return `
+                                    <tr class="standings-row ${medalClass}">
+                                        <td class="standings-rank"><span class="rank-badge">#${rank}</span></td>
+                                        <td class="standings-team">
+                                            <span class="team-name">${team.name}</span>
+                                        </td>
+                                        <td class="standings-points"><span class="points-pill">${team.ranking_points} pct</span></td>
+                                        <td>${team.wins}</td>
+                                        <td>${team.losses}</td>
+                                        <td>
+                                            <div class="stat-line">
+                                                <span class="stat-line-main">${team.sets_won}-${team.sets_lost}</span>
+                                                <span class="stat-line-diff ${setsDiff > 0 ? 'positive' : setsDiff < 0 ? 'negative' : ''}">${formatDiff(setsDiff)}</span>
+                                            </div>
+                                        </td>
+                                        <td>${team.set_ratio_display}</td>
+                                        <td>
+                                            <div class="stat-line">
+                                                <span class="stat-line-main">${team.points_won}-${team.points_lost}</span>
+                                                <span class="stat-line-diff ${pointsDiff > 0 ? 'positive' : pointsDiff < 0 ? 'negative' : ''}">${formatDiff(pointsDiff)}</span>
+                                            </div>
+                                        </td>
+                                        <td>${team.point_ratio_display}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
             `;
         });
+}
+
+function shareStandingsWhatsApp() {
+    if (!lastStandings.length) {
+        alert('Nu există date în clasament pentru a fi partajate.');
+        return;
+    }
+
+    const lines = lastStandings.map((team, idx) => {
+        const rank = idx + 1;
+        const setsDiff = team.sets_won - team.sets_lost;
+        const pointsDiff = team.points_won - team.points_lost;
+        const formatDiff = value => (value > 0 ? `+${value}` : `${value}`);
+
+        return `${rank}. ${team.name} – ${team.ranking_points} pct | Victorii: ${team.wins}-${team.losses} | Seturi: ${team.sets_won}-${team.sets_lost} (${formatDiff(setsDiff)}) | Raport seturi: ${team.set_ratio_display} | Puncte: ${team.points_won}-${team.points_lost} (${formatDiff(pointsDiff)}) | Raport puncte: ${team.point_ratio_display}`;
+    });
+
+    const message = `Clasament turneu volei:\n${lines.join('\n')}`;
+    const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+}
+
+function exportTable(containerId, fileName) {
+    const container = document.getElementById(containerId);
+    if (!container) {
+        alert('Nu am găsit tabelul pentru export.');
+        return;
+    }
+
+    const downloadName = `${fileName || 'clasament'}-${new Date().toISOString().slice(0, 10)}.jpg`;
+
+    html2canvas(container, {
+        backgroundColor: '#ffffff',
+        scale: window.devicePixelRatio < 2 ? 2 : window.devicePixelRatio
+    }).then(canvas => {
+        const link = document.createElement('a');
+        link.href = canvas.toDataURL('image/jpeg', 0.9);
+        link.download = downloadName;
+        link.click();
+    }).catch(() => {
+        alert('Nu am putut genera imaginea pentru export.');
+    });
 }
 
 // Încarcă statistici
