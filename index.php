@@ -10,7 +10,7 @@
 <body>
     <div class="container">
         <header>
-            <h1>🏐 Manager Turneu Volei</h1>
+            <h1 id="app-title">🏐 Manager Turneu Volei</h1>
             <nav>
                 <button class="nav-btn active" data-view="setup">⚙️ Setup</button>
                 <button class="nav-btn" data-view="matches">📋 Meciuri</button>
@@ -31,6 +31,16 @@
                         <label><input type="radio" name="format" value="3" checked> Best of 3</label>
                         <label><input type="radio" name="format" value="5"> Best of 5</label>
                     </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="app-title-input">Titlu aplicație:</label>
+                    <div class="input-group">
+                        <input type="text" id="app-title-input" placeholder="Ex: Turneul de la Liceu" />
+                        <button onclick="saveAppTitle()" class="btn btn-secondary">💾 Salvează</button>
+                    </div>
+                    <p class="form-hint">Titlul va apărea în antet și în bara de titlu a browserului.</p>
+                    <p id="app-title-feedback" class="form-feedback" role="status" aria-live="polite"></p>
                 </div>
 
                 <div class="form-group">
