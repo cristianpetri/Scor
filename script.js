@@ -459,7 +459,7 @@ function renderLiveMatch(data) {
         !isCompleted ? currentSetNumber : null
     ].filter(Boolean))).sort((a, b) => a - b);
 
-    const timelineMarkup = setNumbers.length ? setNumbers.map(setNumber => {
+    const timelineSetsMarkup = setNumbers.length ? setNumbers.map(setNumber => {
         const setDetails = sortedSets.find(set => Number(set.set_number) === setNumber) || null;
         const setPoints = (pointsBySet[setNumber] || []).slice().sort((a, b) => Number(a.point_number) - Number(b.point_number));
         const highlightActive = !isCompleted && setNumber === currentSetNumber;
@@ -479,7 +479,7 @@ function renderLiveMatch(data) {
                 <div class="set-timeline ${highlightActive ? 'set-timeline-live' : ''}">
                     <div class="set-timeline-header">
                         <span class="set-title">Set ${setNumber}</span>
-                        <span class="set-score">${displayScoreTeam1}-${displayScoreTeam2}</span>
+                        <div class="set-score">${displayScoreTeam1}<span>-</span>${displayScoreTeam2}</div>
                         <span class="set-duration" ${durationAttrs}>⏱️ --:--</span>
                     </div>
                     <p class="timeline-empty">Încă nu s-au marcat puncte în acest set.</p>
@@ -513,20 +513,32 @@ function renderLiveMatch(data) {
             <div class="set-timeline ${highlightActive ? 'set-timeline-live' : ''}">
                 <div class="set-timeline-header">
                     <span class="set-title">Set ${setNumber}</span>
-                    <span class="set-score">${displayScoreTeam1}-${displayScoreTeam2}</span>
+                    <div class="set-score">${displayScoreTeam1}<span>-</span>${displayScoreTeam2}</div>
                     <span class="set-duration" ${durationAttrs}>${durationText}</span>
                 </div>
-                <div class="timeline-row">
+                <div class="timeline-row team1-row">
                     <span class="team-label">${match.team1_name}</span>
                     <div class="timeline-points"${gridColumnsStyle}>${team1Badges}</div>
                 </div>
-                <div class="timeline-row">
+                <div class="timeline-row team2-row">
                     <span class="team-label">${match.team2_name}</span>
                     <div class="timeline-points"${gridColumnsStyle}>${team2Badges}</div>
                 </div>
             </div>
         `;
-    }).join('') : '<p>Nu există date pentru acest meci.</p>';
+    }).join('') : '';
+
+    const timelineMarkup = timelineSetsMarkup
+        ? `
+            <div class="points-timeline-content">
+                <div class="timeline-legend" aria-label="Legendă culori echipe">
+                    <span class="legend-item"><span class="legend-dot team1"></span>${match.team1_name}</span>
+                    <span class="legend-item"><span class="legend-dot team2"></span>${match.team2_name}</span>
+                </div>
+                <div class="timeline-sets">${timelineSetsMarkup}</div>
+            </div>
+        `
+        : '<p class="timeline-empty">Nu există date pentru acest meci.</p>';
 
     const scoreboard = `
         <div class="scoreboard">
