@@ -1,3 +1,12 @@
+:root {
+    --team1-color-light: #bfdbfe;
+    --team1-color-mid: #93c5fd;
+    --team1-color-strong: #3b82f6;
+    --team2-color-light: #fecaca;
+    --team2-color-mid: #fda4af;
+    --team2-color-strong: #f87171;
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -443,12 +452,12 @@ nav {
 }
 
 .set-counter.team1 {
-    background: linear-gradient(135deg, #bfdbfe, #93c5fd);
+    background: linear-gradient(135deg, var(--team1-color-light), var(--team1-color-mid));
     color: #1e3a8a;
 }
 
 .set-counter.team2 {
-    background: linear-gradient(135deg, #fecaca, #fda4af);
+    background: linear-gradient(135deg, var(--team2-color-light), var(--team2-color-mid));
     color: #7f1d1d;
 }
 
@@ -668,11 +677,11 @@ nav {
 }
 
 .legend-dot.team1 {
-    background: linear-gradient(135deg, #bfdbfe, #60a5fa);
+    background: linear-gradient(135deg, var(--team1-color-mid), var(--team1-color-strong));
 }
 
 .legend-dot.team2 {
-    background: linear-gradient(135deg, #fecaca, #f87171);
+    background: linear-gradient(135deg, var(--team2-color-mid), var(--team2-color-strong));
 }
 
 .timeline-sets {
@@ -775,11 +784,11 @@ nav {
 }
 
 .team-dot.team1 {
-    background: linear-gradient(160deg, #93c5fd, #3b82f6);
+    background: linear-gradient(160deg, var(--team1-color-mid), var(--team1-color-strong));
 }
 
 .team-dot.team2 {
-    background: linear-gradient(160deg, #fda4af, #f87171);
+    background: linear-gradient(160deg, var(--team2-color-mid), var(--team2-color-strong));
 }
 
 .timeline-sequence {
@@ -796,6 +805,8 @@ nav {
     width: var(--badge-size, 34px);
     height: var(--badge-size, 34px);
     min-width: var(--badge-size, 34px);
+    flex: 0 0 var(--badge-size, 34px);
+    aspect-ratio: 1 / 1;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -914,11 +925,11 @@ nav {
 }
 
 .point-badge.team1 {
-    background: linear-gradient(160deg, #93c5fd, #3b82f6);
+    background: linear-gradient(160deg, var(--team1-color-mid), var(--team1-color-strong));
 }
 
 .point-badge.team2 {
-    background: linear-gradient(160deg, #fda4af, #f87171);
+    background: linear-gradient(160deg, var(--team2-color-mid), var(--team2-color-strong));
 }
 
 .point-badge.team2.latest {
