@@ -6,6 +6,9 @@ let currentView = 'matches';
 let liveTimerInterval = null;
 let lastStandings = [];
 let lastStatsData = { teams: [], matches: [] };
+let authPanel = null;
+let authToggleButton = null;
+let authDropdownInitialized = false;
 
 const APP_TITLE_STORAGE_KEY = 'tournament_app_title';
 const DEFAULT_APP_TITLE = '🏐 Manager Turneu Volei';
@@ -41,6 +44,69 @@ function initializeAppTitle() {
     if (input) {
         input.value = storedTitle;
     }
+}
+
+function setAuthPanelState(shouldOpen) {
+    if (!authPanel || !authToggleButton) {
+        return;
+    }
+
+    const open = typeof shouldOpen === 'boolean'
+        ? shouldOpen
+        : !authPanel.classList.contains('open');
+
+    authPanel.hidden = !open;
+    authPanel.classList.toggle('open', open);
+    authToggleButton.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+    if (open) {
+        const usernameInput = authPanel.querySelector('#login-username');
+        if (usernameInput) {
+            try {
+                usernameInput.focus({ preventScroll: true });
+            } catch (error) {
+                usernameInput.focus();
+            }
+        }
+    }
+}
+
+function setupAuthDropdown() {
+    if (authDropdownInitialized) {
+        return;
+    }
+
+    authPanel = document.getElementById('auth-panel');
+    authToggleButton = document.getElementById('auth-toggle');
+
+    if (!authPanel || !authToggleButton) {
+        return;
+    }
+
+    authDropdownInitialized = true;
+
+    authToggleButton.addEventListener('click', event => {
+        event.preventDefault();
+        setAuthPanelState();
+    });
+
+    document.addEventListener('click', event => {
+        if (!authPanel.classList.contains('open')) {
+            return;
+        }
+
+        if (authPanel.contains(event.target) || authToggleButton.contains(event.target)) {
+            return;
+        }
+
+        setAuthPanelState(false);
+    });
+
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && authPanel.classList.contains('open')) {
+            setAuthPanelState(false);
+        }
+    });
 }
 
 function showAppTitleFeedback(message) {
@@ -180,6 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     initializeAppTitle();
+    setupAuthDropdown();
 
     const titleInput = document.getElementById('app-title-input');
     if (titleInput) {
@@ -1336,6 +1403,8 @@ function showLoginFeedback(message, type = 'error') {
     const feedback = document.getElementById('login-feedback');
     if (!feedback) return;
 
+    setAuthPanelState(true);
+
     feedback.textContent = message;
     feedback.classList.remove('auth-feedback-error', 'auth-feedback-success', 'visible');
 
@@ -1357,6 +1426,7 @@ function handleLoginSubmit(event) {
         submitButton.disabled = true;
     }
 
+    setAuthPanelState(true);
     showLoginFeedback('Se verifică datele...', 'success');
 
     fetch('ajax.php', {
