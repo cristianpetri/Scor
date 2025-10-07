@@ -1,6 +1,47 @@
 <?php
 require_once 'config.php';
 
+// Autentificare utilizatori
+function findUserByUsername(string $username): ?array {
+    global $pdo;
+
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ? LIMIT 1");
+    $stmt->execute([$username]);
+    $user = $stmt->fetch();
+
+    return $user ?: null;
+}
+
+function loginUser(string $username, string $password): array {
+    $user = findUserByUsername($username);
+
+    if (!$user || !password_verify($password, $user['password_hash'])) {
+        return [
+            'success' => false,
+            'message' => 'Date de autentificare invalide.'
+        ];
+    }
+
+    if (password_needs_rehash($user['password_hash'], PASSWORD_DEFAULT)) {
+        global $pdo;
+        $newHash = password_hash($password, PASSWORD_DEFAULT);
+        $update = $pdo->prepare("UPDATE users SET password_hash = ? WHERE id = ?");
+        $update->execute([$newHash, $user['id']]);
+        $user['password_hash'] = $newHash;
+    }
+
+    setUserSession($user);
+
+    return [
+        'success' => true,
+        'user' => getCurrentUser()
+    ];
+}
+
+function logoutUser(): void {
+    clearUserSession();
+}
+
 // Adaugă echipă
 function addTeam($name) {
     global $pdo;

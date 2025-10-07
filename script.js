@@ -1,6 +1,8 @@
+const isAdminUser = document.body ? document.body.getAttribute('data-is-admin') === '1' : false;
+
 // Variabile globale
 let currentMatchId = null;
-let currentView = 'setup';
+let currentView = 'matches';
 let liveTimerInterval = null;
 let lastStandings = [];
 let lastStatsData = { teams: [], matches: [] };
@@ -172,11 +174,26 @@ function durationAttributes(info) {
 
 // Inițializare după încărcarea paginii
 document.addEventListener('DOMContentLoaded', () => {
+    const activeNav = document.querySelector('.nav-btn.active');
+    if (activeNav) {
+        currentView = activeNav.dataset.view;
+    }
+
     initializeAppTitle();
 
     const titleInput = document.getElementById('app-title-input');
     if (titleInput) {
         titleInput.addEventListener('keydown', handleAppTitleKeydown);
+    }
+
+    const loginForm = document.getElementById('login-form');
+    if (loginForm) {
+        loginForm.addEventListener('submit', handleLoginSubmit);
+    }
+
+    const logoutButton = document.getElementById('logout-button');
+    if (logoutButton) {
+        logoutButton.addEventListener('click', handleLogout);
     }
 
     loadTeams();
@@ -192,6 +209,12 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
 });
 
 function switchView(view) {
+    const targetView = document.getElementById('view-' + view);
+    if (!targetView) {
+        console.warn(`View-ul "${view}" nu este disponibil pentru acest utilizator.`);
+        return;
+    }
+
     currentView = view;
 
     // Update butoane navigare
@@ -206,7 +229,7 @@ function switchView(view) {
     document.querySelectorAll('.view').forEach(v => {
         v.classList.remove('active');
     });
-    document.getElementById('view-' + view).classList.add('active');
+    targetView.classList.add('active');
 
     // Încarcă date pentru view
     if (view !== 'live') {
@@ -219,22 +242,49 @@ function switchView(view) {
     if (view === 'live') loadLiveMatch();
 }
 
+function ensureAdminClient() {
+    if (isAdminUser) {
+        return true;
+    }
+
+    alert('Această acțiune este disponibilă doar administratorilor. Autentifică-te pentru a continua.');
+    return false;
+}
+
+function handleUnauthorizedResponse(data) {
+    if (data && data.error === 'unauthorized') {
+        alert(data.message || 'Această acțiune necesită autentificare de administrator.');
+        return true;
+    }
+    return false;
+}
+
 // Încarcă echipe
 function loadTeams() {
     fetch('ajax.php?action=get_teams')
         .then(r => r.json())
         .then(data => {
+            const teams = Array.isArray(data.teams) ? data.teams : [];
+            const countElement = document.getElementById('team-count');
+            if (countElement) {
+                countElement.textContent = teams.length;
+            }
+
             const container = document.getElementById('teams-list');
             if (!container) return;
 
-            document.getElementById('team-count').textContent = data.teams.length;
+            container.innerHTML = teams.map(team => {
+                const deleteButton = isAdminUser
+                    ? `<button onclick="deleteTeam(${team.id})">🗑️</button>`
+                    : '';
 
-            container.innerHTML = data.teams.map(team => `
-                <div class="team-item">
-                    <span><strong>${team.name}</strong></span>
-                    <button onclick="deleteTeam(${team.id})">🗑️</button>
-                </div>
-            `).join('');
+                return `
+                    <div class="team-item">
+                        <span><strong>${team.name}</strong></span>
+                        ${deleteButton}
+                    </div>
+                `;
+            }).join('');
         })
         .catch(() => {
             const container = document.getElementById('teams-list');
@@ -246,7 +296,11 @@ function loadTeams() {
 
 // Adaugă echipă
 function addTeam() {
+    if (!ensureAdminClient()) return;
+
     const input = document.getElementById('team-name');
+    if (!input) return;
+
     const name = input.value.trim();
 
     if (!name) {
@@ -264,15 +318,20 @@ function addTeam() {
     })
     .then(r => r.json())
     .then(data => {
+        if (handleUnauthorizedResponse(data)) return;
         if (data.success) {
             input.value = '';
             loadTeams();
+        }
+        if (!data.success && data.message) {
+            alert(data.message);
         }
     });
 }
 
 // Șterge echipă
 function deleteTeam(id) {
+    if (!ensureAdminClient()) return;
     if (!confirm('Sigur vrei să ștergi această echipă?')) return;
 
     const formData = new FormData();
@@ -285,18 +344,24 @@ function deleteTeam(id) {
     })
     .then(r => r.json())
     .then(data => {
+        if (handleUnauthorizedResponse(data)) return;
         if (data.success) {
             loadTeams();
             loadMatches();
             if (currentView === 'standings') loadStandings();
             if (currentView === 'stats') loadStats();
         }
+        if (!data.success && data.message) {
+            alert(data.message);
+        }
     });
 }
 
 // Generează meciuri
 function generateMatches() {
-    const format = document.querySelector('input[name="format"]:checked').value;
+    if (!ensureAdminClient()) return;
+    const selectedFormat = document.querySelector('input[name="format"]:checked');
+    const format = selectedFormat ? selectedFormat.value : '3';
 
     if (!confirm('Generează meciurile? Meciurile existente vor fi șterse!')) return;
 
@@ -310,6 +375,7 @@ function generateMatches() {
     })
     .then(r => r.json())
     .then(data => {
+        if (handleUnauthorizedResponse(data)) return;
         if (!data.success) {
             alert(data.message || 'Eroare la generarea meciurilor.');
             return;
@@ -337,12 +403,43 @@ function loadMatches() {
             const container = document.getElementById('matches-list');
             if (!container) return;
 
-            if (data.matches.length === 0) {
-                container.innerHTML = '<p class="text-center">Nu există meciuri generate. Mergi la Setup pentru a genera meciuri.</p>';
+            const matches = Array.isArray(data.matches) ? data.matches : [];
+
+            if (matches.length === 0) {
+                const emptyMessage = isAdminUser
+                    ? 'Nu există meciuri generate. Mergi la Setup pentru a genera meciuri.'
+                    : 'Nu există meciuri generate. Contactează un administrator pentru a configura meciurile.';
+                container.innerHTML = `<p class="text-center">${emptyMessage}</p>`;
                 return;
             }
 
-            container.innerHTML = data.matches.map((match, idx) => `
+            container.innerHTML = matches.map((match, idx) => {
+                const winnerMarkup = match.status === 'completed' ? `
+                                <div class="winner">Câștigător: ${match.winner_name} (${match.sets_team1}-${match.sets_team2})</div>
+                            ` : '';
+
+                let actionsMarkup = `<button class="btn btn-secondary" onclick="viewMatchStats(${match.id})">📊 Detalii</button>`;
+
+                if (isAdminUser) {
+                    const reorderControls = match.status === 'pending' ? `
+                                <div class="match-controls">
+                                    ${idx > 0 ? `<button onclick=\"moveMatch(${match.id}, ${match.match_order - 1})\">⬆️</button>` : ''}
+                                    ${idx < matches.length - 1 ? `<button onclick=\"moveMatch(${match.id}, ${match.match_order + 1})\">⬇️</button>` : ''}
+                                </div>
+                    ` : '';
+
+                    const startButton = match.status === 'pending'
+                        ? `<button class="btn btn-primary" onclick="startMatch(${match.id})">▶️ Start</button>`
+                        : '';
+
+                    actionsMarkup = `
+                        ${reorderControls}
+                        ${startButton}
+                        <button class="btn btn-secondary" onclick="viewMatchStats(${match.id})">📊 Detalii</button>
+                    `;
+                }
+
+                return `
                 <div class="match-item ${match.status === 'completed' ? 'completed' : ''} ${match.status === 'live' ? 'live' : ''}">
                     <div class="match-header">
                         <div class="match-info">
@@ -353,29 +450,21 @@ function loadMatches() {
                                 </span>
                             </div>
                             <h3>${match.team1_name} vs ${match.team2_name}</h3>
-                            ${match.status === 'completed' ? `
-                                <div class="winner">Câștigător: ${match.winner_name} (${match.sets_team1}-${match.sets_team2})</div>
-                            ` : ''}
+                            ${winnerMarkup}
                         </div>
                         <div class="match-actions">
-                            ${match.status === 'pending' ? `
-                                <div class="match-controls">
-                                    ${idx > 0 ? `<button onclick=\"moveMatch(${match.id}, ${match.match_order - 1})\">⬆️</button>` : ''}
-                                    ${idx < data.matches.length - 1 ? `<button onclick=\"moveMatch(${match.id}, ${match.match_order + 1})\">⬇️</button>` : ''}
-                                </div>
-                                <button class="btn btn-primary" onclick="startMatch(${match.id})">▶️ Start</button>
-                            ` : `
-                                <button class="btn btn-secondary" onclick="viewMatchStats(${match.id})">📊 Detalii</button>
-                            `}
+                            ${actionsMarkup}
                         </div>
                     </div>
                 </div>
-            `).join('');
+                `;
+            }).join('');
         });
 }
 
 // Mută meci
 function moveMatch(matchId, newOrder) {
+    if (!ensureAdminClient()) return;
     const formData = new FormData();
     formData.append('action', 'update_match_order');
     formData.append('match_id', matchId);
@@ -387,12 +476,19 @@ function moveMatch(matchId, newOrder) {
     })
     .then(r => r.json())
     .then(data => {
-        if (data.success) loadMatches();
+        if (handleUnauthorizedResponse(data)) return;
+        if (data.success) {
+            loadMatches();
+        }
+        if (!data.success && data.message) {
+            alert(data.message);
+        }
     });
 }
 
 // Start meci
 function startMatch(matchId) {
+    if (!ensureAdminClient()) return;
     currentMatchId = matchId;
 
     const formData = new FormData();
@@ -405,6 +501,10 @@ function startMatch(matchId) {
     })
     .then(r => r.json())
     .then(data => {
+        if (handleUnauthorizedResponse(data)) {
+            currentMatchId = null;
+            return;
+        }
         if (!data.success) {
             alert(data.message || 'Nu am putut porni meciul.');
             currentMatchId = null;
@@ -459,6 +559,7 @@ function renderLiveMatch(data) {
     if (!container) return;
 
     const isCompleted = match.status === 'completed';
+    const allowLiveControls = isAdminUser && !isCompleted;
     const completedSetsCount = Number(match.sets_team1) + Number(match.sets_team2);
     const currentSetNumber = isCompleted ? Math.max(completedSetsCount, 1) : completedSetsCount + 1;
     const currentSetData = (sets.find(set => Number(set.set_number) === currentSetNumber) || {
@@ -532,7 +633,7 @@ function renderLiveMatch(data) {
     const matchDurationText = `⏱️ ${matchDurationInfo.display}`;
     const secondaryMetaLabel = isCompleted ? 'Seturi jucate' : 'Set curent';
     const secondaryMetaValue = isCompleted ? completedSetsCount : currentSetNumber;
-    const removePointButton = (!isCompleted && points.length) ? '<button class="btn-undo" onclick="removeLastPoint()">↩️ Anulează ultimul punct</button>' : '';
+    const removePointButton = (allowLiveControls && points.length) ? '<button class="btn-undo" onclick="removeLastPoint()">↩️ Anulează ultimul punct</button>' : '';
 
     const setNumbers = Array.from(new Set([
         ...sortedSets.map(set => Number(set.set_number)),
@@ -632,14 +733,14 @@ function renderLiveMatch(data) {
                     <div class="team-name">${match.team1_name}</div>
                     <div class="team-points">${currentPointsTeam1}</div>
                     <div class="team-meta">${pointsLabel}</div>
-                    ${!isCompleted ? `<button class="btn-score" onclick="addPointLive('team1')">+ Punct</button>` : ''}
+                    ${allowLiveControls ? `<button class="btn-score" onclick="addPointLive('team1')">+ Punct</button>` : ''}
                 </div>
                 <div class="team-card team2 ${team2Winner ? 'winner' : ''}">
                     ${team2WinnerTag}
                     <div class="team-name">${match.team2_name}</div>
                     <div class="team-points">${currentPointsTeam2}</div>
                     <div class="team-meta">${pointsLabel}</div>
-                    ${!isCompleted ? `<button class="btn-score" onclick="addPointLive('team2')">+ Punct</button>` : ''}
+                    ${allowLiveControls ? `<button class="btn-score" onclick="addPointLive('team2')">+ Punct</button>` : ''}
                 </div>
             </div>
             <div class="scoreboard-meta">
@@ -685,6 +786,7 @@ function renderLiveMatch(data) {
 }
 
 function addPointLive(teamKey) {
+    if (!ensureAdminClient()) return;
     if (!currentMatchId) return;
 
     const formData = new FormData();
@@ -698,6 +800,7 @@ function addPointLive(teamKey) {
     })
     .then(r => r.json())
     .then(data => {
+        if (handleUnauthorizedResponse(data)) return;
         if (!data.success) {
             alert(data.message || 'Nu am putut adăuga punctul.');
             return;
@@ -713,6 +816,7 @@ function addPointLive(teamKey) {
 }
 
 function removeLastPoint() {
+    if (!ensureAdminClient()) return;
     if (!currentMatchId) return;
     if (!confirm('Ești sigur că vrei să anulezi ultimul punct înregistrat?')) return;
 
@@ -726,6 +830,7 @@ function removeLastPoint() {
     })
     .then(r => r.json())
     .then(data => {
+        if (handleUnauthorizedResponse(data)) return;
         if (!data.success) {
             alert(data.message || 'Nu am putut șterge ultimul punct.');
             return;
@@ -1224,5 +1329,83 @@ function shareStatsWhatsApp() {
         })
         .catch(() => {
             alert('Nu am putut genera imaginea pentru partajare.');
+        });
+}
+
+function showLoginFeedback(message, type = 'error') {
+    const feedback = document.getElementById('login-feedback');
+    if (!feedback) return;
+
+    feedback.textContent = message;
+    feedback.classList.remove('auth-feedback-error', 'auth-feedback-success', 'visible');
+
+    if (message) {
+        const className = type === 'success' ? 'auth-feedback-success' : 'auth-feedback-error';
+        feedback.classList.add(className, 'visible');
+    }
+}
+
+function handleLoginSubmit(event) {
+    event.preventDefault();
+
+    const form = event.target;
+    const formData = new FormData(form);
+    formData.append('action', 'login');
+
+    const submitButton = form.querySelector('button[type="submit"]');
+    if (submitButton) {
+        submitButton.disabled = true;
+    }
+
+    showLoginFeedback('Se verifică datele...', 'success');
+
+    fetch('ajax.php', {
+        method: 'POST',
+        body: formData
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showLoginFeedback('Autentificare reușită. Se reîncarcă...', 'success');
+                window.location.reload();
+                return;
+            }
+
+            if (submitButton) {
+                submitButton.disabled = false;
+            }
+
+            showLoginFeedback(data.message || 'Autentificarea a eșuat.');
+        })
+        .catch(() => {
+            if (submitButton) {
+                submitButton.disabled = false;
+            }
+
+            showLoginFeedback('Nu am putut realiza autentificarea. Încearcă din nou.');
+        });
+}
+
+function handleLogout(event) {
+    event.preventDefault();
+
+    const formData = new FormData();
+    formData.append('action', 'logout');
+
+    fetch('ajax.php', {
+        method: 'POST',
+        body: formData
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+                return;
+            }
+
+            alert(data.message || 'Nu am putut realiza deconectarea. Încearcă din nou.');
+        })
+        .catch(() => {
+            alert('Nu am putut realiza deconectarea. Încearcă din nou.');
         });
 }

@@ -2,6 +2,18 @@ CREATE DATABASE IF NOT EXISTS volei_turneu CHARACTER SET utf8mb4 COLLATE utf8mb4
 
 USE volei_turneu;
 
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(100) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(50) NOT NULL DEFAULT 'user',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO users (username, password_hash, role)
+SELECT 'admin', '$2y$12$oblL2U3fI8.q3/TrB6H2.uaWMVzdTxWEOJzNjFzyVx9fOlf39h4Rq', 'admin'
+WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'admin');
+
 CREATE TABLE teams (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,

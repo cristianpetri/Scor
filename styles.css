@@ -47,6 +47,78 @@ nav {
     flex-wrap: wrap;
 }
 
+.auth-bar {
+    margin-top: 15px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.auth-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.auth-form input {
+    padding: 10px 14px;
+    border: 2px solid rgba(59, 130, 246, 0.4);
+    border-radius: 8px;
+    font-size: 15px;
+    background-color: #fff;
+    min-width: 140px;
+}
+
+.auth-form input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.auth-status {
+    color: #1f2937;
+    font-weight: 600;
+}
+
+.auth-button {
+    white-space: nowrap;
+}
+
+.auth-feedback {
+    width: 100%;
+    text-align: right;
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.auth-feedback.visible {
+    opacity: 1;
+}
+
+.auth-feedback-error {
+    color: #dc2626;
+}
+
+.auth-feedback-success {
+    color: #059669;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 .nav-btn {
     padding: 10px 20px;
     border: 2px solid rgba(59, 130, 246, 0.4);
