@@ -75,7 +75,7 @@
             <div class="card">
                 <h2>🏆 Clasament General</h2>
                 <div class="standings-actions">
-                    <button onclick="exportTable('standings-table', 'clasament')" class="btn btn-secondary">
+                    <button onclick="exportStandingsImage()" class="btn btn-secondary">
                         📸 Export JPG
                     </button>
                     <button onclick="shareStandingsWhatsApp()" class="btn btn-whatsapp">
