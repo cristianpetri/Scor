@@ -13,6 +13,106 @@ let authDropdownInitialized = false;
 const APP_TITLE_STORAGE_KEY = 'tournament_app_title';
 const DEFAULT_APP_TITLE = '🏐 Manager Turneu Volei';
 
+function parseStatValue(value) {
+    const numericValue = Number(value);
+    return Number.isNaN(numericValue) ? 0 : numericValue;
+}
+
+function computeStandingsMetrics(rawTeam) {
+    const wins = parseStatValue(rawTeam.wins);
+    const losses = parseStatValue(rawTeam.losses);
+    const setsWon = parseStatValue(rawTeam.sets_won);
+    const setsLost = parseStatValue(rawTeam.sets_lost);
+    const pointsWon = parseStatValue(rawTeam.points_won);
+    const pointsLost = parseStatValue(rawTeam.points_lost);
+
+    const rankingPoints = (wins * 2) + losses;
+
+    let setRatioValue = 0;
+    if (setsWon === 0 && setsLost === 0) {
+        setRatioValue = 0;
+    } else if (setsLost === 0) {
+        setRatioValue = Number.POSITIVE_INFINITY;
+    } else {
+        setRatioValue = setsWon / setsLost;
+    }
+
+    let pointRatioValue = 0;
+    if (pointsWon === 0 && pointsLost === 0) {
+        pointRatioValue = 0;
+    } else if (pointsLost === 0) {
+        pointRatioValue = Number.POSITIVE_INFINITY;
+    } else {
+        pointRatioValue = pointsWon / pointsLost;
+    }
+
+    const setRatioDisplay = (setsWon === 0 && setsLost === 0)
+        ? '0.00'
+        : (setsLost === 0 ? '∞' : setRatioValue.toFixed(2));
+    const pointRatioDisplay = (pointsWon === 0 && pointsLost === 0)
+        ? '0.00'
+        : (pointsLost === 0 ? '∞' : pointRatioValue.toFixed(2));
+
+    const setDiff = setsWon - setsLost;
+    const pointDiff = pointsWon - pointsLost;
+
+    return {
+        ...rawTeam,
+        wins,
+        losses,
+        sets_won: setsWon,
+        sets_lost: setsLost,
+        points_won: pointsWon,
+        points_lost: pointsLost,
+        ranking_points: rankingPoints,
+        set_ratio_value: setRatioValue,
+        point_ratio_value: pointRatioValue,
+        set_ratio_display: setRatioDisplay,
+        point_ratio_display: pointRatioDisplay,
+        set_diff: setDiff,
+        point_diff: pointDiff
+    };
+}
+
+function compareDescNumeric(left, right) {
+    if (left === right) return 0;
+    if (left === Number.POSITIVE_INFINITY) return -1;
+    if (right === Number.POSITIVE_INFINITY) return 1;
+    if (Number.isNaN(left) && Number.isNaN(right)) return 0;
+    if (Number.isNaN(left)) return 1;
+    if (Number.isNaN(right)) return -1;
+    return left > right ? -1 : 1;
+}
+
+function sortTeamsForStandings(teams) {
+    const sorted = teams.slice();
+    sorted.sort((a, b) => {
+        let result = compareDescNumeric(a.ranking_points, b.ranking_points);
+        if (result !== 0) return result;
+
+        result = compareDescNumeric(a.set_ratio_value, b.set_ratio_value);
+        if (result !== 0) return result;
+
+        result = compareDescNumeric(a.point_ratio_value, b.point_ratio_value);
+        if (result !== 0) return result;
+
+        result = compareDescNumeric(a.set_diff, b.set_diff);
+        if (result !== 0) return result;
+
+        result = compareDescNumeric(a.point_diff, b.point_diff);
+        if (result !== 0) return result;
+
+        return a.name.localeCompare(b.name, 'ro', { sensitivity: 'base' });
+    });
+    return sorted;
+}
+
+function formatDifference(value) {
+    if (value > 0) return `+${value}`;
+    if (value === 0) return '0';
+    return `${value}`;
+}
+
 // Funcții pentru titlu aplicație
 function getStoredAppTitle() {
     try {
@@ -1008,11 +1108,15 @@ function loadStandings() {
         .then(data => {
             const container = document.getElementById('standings-table');
             if (!container) return;
-            lastStandings = Array.isArray(data.teams) ? data.teams : [];
-            if (lastStandings.length === 0) {
+            const rawTeams = Array.isArray(data.teams) ? data.teams : [];
+            if (!rawTeams.length) {
+                lastStandings = [];
                 container.innerHTML = '<p class="text-center">Nu există echipe înregistrate.</p>';
                 return;
             }
+            const processedTeams = rawTeams.map(computeStandingsMetrics);
+            const orderedTeams = sortTeamsForStandings(processedTeams);
+            lastStandings = orderedTeams;
             container.innerHTML = `
                 <div class="standings-table-wrapper">
                     <table>
@@ -1030,12 +1134,11 @@ function loadStandings() {
                             </tr>
                         </thead>
                         <tbody>
-                            ${lastStandings.map((team, idx) => {
+                            ${orderedTeams.map((team, idx) => {
                                 const rank = idx + 1;
                                 const medalClass = rank === 1 ? 'standings-gold' : rank === 2 ? 'standings-silver' : rank === 3 ? 'standings-bronze' : '';
-                                const setsDiff = team.sets_won - team.sets_lost;
-                                const pointsDiff = team.points_won - team.points_lost;
-                                const formatDiff = value => value > 0 ? `+${value}` : value === 0 ? '0' : `${value}`;
+                                const setsDiff = Number(team.set_diff ?? (team.sets_won - team.sets_lost));
+                                const pointsDiff = Number(team.point_diff ?? (team.points_won - team.points_lost));
                                 return `
                                     <tr class="standings-row ${medalClass}">
                                         <td class="standings-rank" data-label="Loc"><span class="rank-badge">#${rank}</span></td>
@@ -1046,14 +1149,14 @@ function loadStandings() {
                                         <td data-label="Seturi (+/-)">
                                             <div class="stat-line">
                                                 <span class="stat-line-main">${team.sets_won}-${team.sets_lost}</span>
-                                                <span class="stat-line-diff ${setsDiff > 0 ? 'positive' : setsDiff < 0 ? 'negative' : ''}">${formatDiff(setsDiff)}</span>
+                                                <span class="stat-line-diff ${setsDiff > 0 ? 'positive' : setsDiff < 0 ? 'negative' : ''}">${formatDifference(setsDiff)}</span>
                                             </div>
                                         </td>
                                         <td data-label="Raport seturi">${team.set_ratio_display}</td>
                                         <td data-label="Puncte (+/-)">
                                             <div class="stat-line">
                                                 <span class="stat-line-main">${team.points_won}-${team.points_lost}</span>
-                                                <span class="stat-line-diff ${pointsDiff > 0 ? 'positive' : pointsDiff < 0 ? 'negative' : ''}">${formatDiff(pointsDiff)}</span>
+                                                <span class="stat-line-diff ${pointsDiff > 0 ? 'positive' : pointsDiff < 0 ? 'negative' : ''}">${formatDifference(pointsDiff)}</span>
                                             </div>
                                         </td>
                                         <td data-label="Raport puncte">${team.point_ratio_display}</td>
@@ -1075,9 +1178,13 @@ function loadStats() {
             const matchesContainer = document.getElementById('stats-matches');
             const teamsContainer = document.getElementById('stats-teams');
             if (!summaryContainer || !matchesContainer) return;
+            const teamsRaw = Array.isArray(data.teams) ? data.teams : [];
+            const processedTeams = teamsRaw.map(computeStandingsMetrics);
+            const orderedTeams = sortTeamsForStandings(processedTeams);
+            const matchesWithHistory = Array.isArray(data.matches) ? data.matches : [];
             lastStatsData = {
-                teams: Array.isArray(data.teams) ? data.teams : [],
-                matches: Array.isArray(data.matches) ? data.matches : []
+                teams: orderedTeams,
+                matches: matchesWithHistory
             };
             const totalTeams = lastStatsData.teams.length;
             const completedMatches = lastStatsData.matches.filter(match => match.status === 'completed');
@@ -1093,9 +1200,8 @@ function loadStats() {
                 } else {
                     const teamCards = lastStatsData.teams.map(team => {
                         const matchesPlayed = Number(team.wins || 0) + Number(team.losses || 0);
-                        const setsDiff = Number(team.sets_won || 0) - Number(team.sets_lost || 0);
-                        const pointsDiff = Number(team.points_won || 0) - Number(team.points_lost || 0);
-                        const formatDiff = value => value > 0 ? `+${value}` : value === 0 ? '0' : `${value}`;
+                        const setsDiff = Number(team.set_diff ?? (team.sets_won - team.sets_lost));
+                        const pointsDiff = Number(team.point_diff ?? (team.points_won - team.points_lost));
                         const badges = matchesPlayed ? [...Array(Number(team.wins || 0)).fill('win'), ...Array(Number(team.losses || 0)).fill('loss')].map(result => {
                             const isWin = result === 'win';
                             const classes = ['point-badge', isWin ? 'team1' : 'team2'];
@@ -1118,7 +1224,7 @@ function loadStats() {
                                 <div class="team-stat-details">
                                     <div class="team-stat-detail">
                                         <span class="detail-label">Seturi</span>
-                                        <span class="detail-value">${Number(team.sets_won || 0)}-${Number(team.sets_lost || 0)} (<span class="diff ${setsDiff > 0 ? 'positive' : setsDiff < 0 ? 'negative' : ''}">${formatDiff(setsDiff)}</span>)</span>
+                                        <span class="detail-value">${Number(team.sets_won || 0)}-${Number(team.sets_lost || 0)} (<span class="diff ${setsDiff > 0 ? 'positive' : setsDiff < 0 ? 'negative' : ''}">${formatDifference(setsDiff)}</span>)</span>
                                     </div>
                                     <div class="team-stat-detail">
                                         <span class="detail-label">Raport seturi</span>
@@ -1126,7 +1232,7 @@ function loadStats() {
                                     </div>
                                     <div class="team-stat-detail">
                                         <span class="detail-label">Puncte</span>
-                                        <span class="detail-value">${Number(team.points_won || 0)}-${Number(team.points_lost || 0)} (<span class="diff ${pointsDiff > 0 ? 'positive' : pointsDiff < 0 ? 'negative' : ''}">${formatDiff(pointsDiff)}</span>)</span>
+                                        <span class="detail-value">${Number(team.points_won || 0)}-${Number(team.points_lost || 0)} (<span class="diff ${pointsDiff > 0 ? 'positive' : pointsDiff < 0 ? 'negative' : ''}">${formatDifference(pointsDiff)}</span>)</span>
                                     </div>
                                     <div class="team-stat-detail">
                                         <span class="detail-label">Raport puncte</span>
@@ -1139,16 +1245,20 @@ function loadStats() {
                     teamsContainer.innerHTML = `<h3>Statistici pe echipe</h3><div class="team-stats-grid">${teamCards}</div>`;
                 }
             }
-            if (!data.matches || data.matches.length === 0) {
+            if (!matchesWithHistory.length) {
                 matchesContainer.innerHTML = '<p class="text-center">Nu există meciuri înregistrate.</p>';
                 return;
             }
-            matchesContainer.innerHTML = data.matches.map(match => {
+            matchesContainer.innerHTML = matchesWithHistory.map(match => {
                 const statusLabel = match.status === 'completed' ? `Finalizat${match.winner_name ? ` – Câștigător: ${match.winner_name}` : ''}` : match.status === 'live' ? 'În desfășurare' : 'Neînceput';
                 const finalScore = (match.sets_team1 || match.sets_team2) ? `${match.sets_team1}-${match.sets_team2}` : '0-0';
-                const sortedSets = Array.isArray(match.points_history) ? match.points_history.slice().sort((a, b) => Number(a.set_number) - Number(b.set_number)) : [];
+                const sortedSets = Array.isArray(match.points_history)
+                    ? match.points_history.slice().sort((a, b) => Number(a.set_number || 0) - Number(b.set_number || 0))
+                    : [];
                 const setsHtml = sortedSets.map(set => {
-                    const points = Array.isArray(set.points) ? set.points.slice().sort((a, b) => Number(a.point_number) - Number(b.point_number)) : [];
+                    const points = Array.isArray(set.points)
+                        ? set.points.slice().sort((a, b) => Number(a.point_number || 0) - Number(b.point_number || 0))
+                        : [];
                     const totalColumns = points.length;
                     const sequenceBadges = points.map(point => {
                         const scorerClass = point.scorer === 'team1' ? 'team1' : 'team2';
@@ -1196,10 +1306,11 @@ function loadStats() {
 function buildStandingsShareMessage() {
     const lines = lastStandings.map((team, idx) => {
         const rank = idx + 1;
-        const setsDiff = team.sets_won - team.sets_lost;
-        const pointsDiff = team.points_won - team.points_lost;
-        const formatDiff = value => (value > 0 ? `+${value}` : `${value}`);
-        return `${rank}. ${team.name} – ${team.ranking_points} pct | Victorii: ${team.wins}-${team.losses} | Seturi: ${team.sets_won}-${team.sets_lost} (${formatDiff(setsDiff)}) | Raport seturi: ${team.set_ratio_display} | Puncte: ${team.points_won}-${team.points_lost} (${formatDiff(pointsDiff)}) | Raport puncte: ${team.point_ratio_display}`;
+        const setsDiff = Number(team.set_diff ?? (team.sets_won - team.sets_lost));
+        const pointsDiff = Number(team.point_diff ?? (team.points_won - team.points_lost));
+        const setRatioDisplay = team.set_ratio_display ?? computeStandingsMetrics(team).set_ratio_display;
+        const pointRatioDisplay = team.point_ratio_display ?? computeStandingsMetrics(team).point_ratio_display;
+        return `${rank}. ${team.name} – ${team.ranking_points} pct | Victorii: ${team.wins}-${team.losses} | Seturi: ${team.sets_won}-${team.sets_lost} (${formatDifference(setsDiff)}) | Raport seturi: ${setRatioDisplay} | Puncte: ${team.points_won}-${team.points_lost} (${formatDifference(pointsDiff)}) | Raport puncte: ${pointRatioDisplay}`;
     });
     return `Clasament turneu volei:\n${lines.join('\n')}`;
 }
@@ -1303,12 +1414,11 @@ function buildStatsShareMessage() {
     const totalPoints = lastStatsData.teams.reduce((acc, team) => acc + (team.points_won || 0), 0);
     const header = `Statistici turneu volei:\nEchipe: ${totalTeams}\nMeciuri finalizate: ${completedMatches}\nPuncte marcate: ${totalPoints}`;
     if (!totalTeams) return header;
-    const formatDiff = value => (value > 0 ? `+${value}` : value === 0 ? '0' : `${value}`);
     const teamLines = lastStatsData.teams.map(team => {
         const matchesPlayed = Number(team.wins || 0) + Number(team.losses || 0);
-        const setsDiff = Number(team.sets_won || 0) - Number(team.sets_lost || 0);
-        const pointsDiff = Number(team.points_won || 0) - Number(team.points_lost || 0);
-        return `${team.name}: ${team.ranking_points} pct | Victorii: ${team.wins}-${team.losses} (${matchesPlayed} meci${matchesPlayed === 1 ? '' : 'uri'}) | Seturi: ${team.sets_won}-${team.sets_lost} (${formatDiff(setsDiff)}) | Puncte: ${team.points_won}-${team.points_lost} (${formatDiff(pointsDiff)})`;
+        const setsDiff = Number(team.set_diff ?? (team.sets_won - team.sets_lost));
+        const pointsDiff = Number(team.point_diff ?? (team.points_won - team.points_lost));
+        return `${team.name}: ${team.ranking_points} pct | Victorii: ${team.wins}-${team.losses} (${matchesPlayed} meci${matchesPlayed === 1 ? '' : 'uri'}) | Seturi: ${team.sets_won}-${team.sets_lost} (${formatDifference(setsDiff)}) | Puncte: ${team.points_won}-${team.points_lost} (${formatDifference(pointsDiff)})`;
     });
     return `${header}\n\nEchipe:\n${teamLines.join('\n')}`;
 }
