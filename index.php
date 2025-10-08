@@ -44,7 +44,6 @@ $isAdmin = isAdmin();
                             <button type="submit" class="btn btn-primary auth-button btn-full">Autentifică-te</button>
                         </form>
                         <p id="login-feedback" class="auth-feedback" role="status" aria-live="polite"></p>
-                        <p class="auth-hint">Cont implicit: <strong>admin</strong> / <strong>admin123</strong></p>
                     </div>
                 </div>
             <?php endif; ?>
@@ -130,6 +129,26 @@ $isAdmin = isAdmin();
             <div class="card">
                 <h2>⚙️ Panou de Administrare</h2>
                 
+                <div class="admin-section">
+                    <h3>🔑 Administrare cont</h3>
+                    <form id="password-change-form" class="auth-form" autocomplete="off">
+                        <div class="auth-form-group">
+                            <label for="current-password">Parolă curentă</label>
+                            <input id="current-password" name="current_password" type="password" placeholder="Parola actuală" required>
+                        </div>
+                        <div class="auth-form-group">
+                            <label for="new-password">Parolă nouă</label>
+                            <input id="new-password" name="new_password" type="password" placeholder="Minim 8 caractere" required>
+                        </div>
+                        <div class="auth-form-group">
+                            <label for="confirm-password">Confirmă parola</label>
+                            <input id="confirm-password" name="confirm_password" type="password" placeholder="Repetă parola nouă" required>
+                        </div>
+                        <button type="submit" class="btn btn-secondary auth-button btn-full">💾 Salvează parola</button>
+                    </form>
+                    <p id="password-change-feedback" class="auth-feedback" role="status" aria-live="polite"></p>
+                </div>
+
                 <div class="admin-section">
                     <h3>🎨 Configurare Aplicație</h3>
                     <div class="form-group">

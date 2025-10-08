@@ -70,7 +70,7 @@ Accesează: `http://localhost/Scor`
 
 **Cont implicit administrator:**
 - Utilizator: `admin`
-- Parolă: `admin123`
+- Parola inițială este definită în `config.php` și ar trebui schimbată imediat din panoul de administrare.
 
 ## 🌐 Deployment pe Hosting
 
@@ -100,7 +100,7 @@ define('DB_NAME', 'nume_baza_date');
 ### 4. Verificare Funcționalitate
 
 1. Accesează domeniul în browser
-2. Autentifică-te cu `admin` / `admin123`
+2. Autentifică-te cu utilizatorul implicit și parola configurată (vezi `config.php`)
 3. Testează adăugarea unei echipe
 4. Generează meciuri de probă
 
@@ -108,17 +108,19 @@ define('DB_NAME', 'nume_baza_date');
 
 ### Schimbare Parolă Administrator
 
-1. Generează hash nou:
+Din panoul **Administrare → Administrare cont** poți actualiza parola administratorului furnizând parola curentă și una nouă (minim 8 caractere). După salvare, toate sesiunile active vor folosi noua parolă.
+
+Pentru scenarii în care nu mai cunoști parola curentă, poți genera manual un hash nou și actualiza direct baza de date:
+
 ```php
 <?php
 echo password_hash('parola_noua', PASSWORD_DEFAULT);
 ?>
 ```
 
-2. Actualizează în baza de date:
 ```sql
-UPDATE users 
-SET password_hash = 'hash_generat_mai_sus' 
+UPDATE users
+SET password_hash = 'hash_generat_mai_sus'
 WHERE username = 'admin';
 ```
 

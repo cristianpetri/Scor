@@ -12,6 +12,16 @@ function findUserByUsername(string $username): ?array {
     return $user ?: null;
 }
 
+function findUserById(int $id): ?array {
+    global $pdo;
+
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? LIMIT 1");
+    $stmt->execute([$id]);
+    $user = $stmt->fetch();
+
+    return $user ?: null;
+}
+
 function loginUser(string $username, string $password): array {
     $user = findUserByUsername($username);
 
@@ -40,6 +50,48 @@ function loginUser(string $username, string $password): array {
 
 function logoutUser(): void {
     clearUserSession();
+}
+
+function changeUserPassword(int $userId, string $currentPassword, string $newPassword): array {
+    $user = findUserById($userId);
+
+    if (!$user) {
+        return [
+            'success' => false,
+            'message' => 'Utilizatorul nu a fost găsit.'
+        ];
+    }
+
+    if (!password_verify($currentPassword, $user['password_hash'])) {
+        return [
+            'success' => false,
+            'message' => 'Parola curentă este incorectă.'
+        ];
+    }
+
+    if (password_verify($newPassword, $user['password_hash'])) {
+        return [
+            'success' => false,
+            'message' => 'Parola nouă trebuie să fie diferită de parola curentă.'
+        ];
+    }
+
+    if (strlen($newPassword) < 8) {
+        return [
+            'success' => false,
+            'message' => 'Parola nouă trebuie să aibă cel puțin 8 caractere.'
+        ];
+    }
+
+    global $pdo;
+    $newHash = password_hash($newPassword, PASSWORD_DEFAULT);
+    $stmt = $pdo->prepare("UPDATE users SET password_hash = ? WHERE id = ?");
+    $stmt->execute([$newHash, $userId]);
+
+    return [
+        'success' => true,
+        'message' => 'Parola a fost actualizată cu succes.'
+    ];
 }
 
 // Adaugă echipă
