@@ -141,4 +141,3 @@ switch($action) {
     default:
         jsonResponse(['success' => false, 'message' => 'Acțiune invalidă']);
 }
-?>

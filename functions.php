@@ -1,4 +1,3 @@
-
 <?php
 require_once 'config.php';
 
@@ -660,4 +659,3 @@ function getMatchesWithHistory() {
 
     return $result;
 }
-?>
