@@ -389,11 +389,12 @@ nav {
 
 /* AUTH BAR - Design elegant */
 .auth-bar {
-    margin-top: 1.5rem;
     display: flex;
-    gap: 1rem;
-    justify-content: flex-start;
+    justify-content: flex-end;
     align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
 }
 
 .auth-dropdown {
@@ -2033,9 +2034,13 @@ nav {
     body {
         padding: 1rem;
     }
-    
+
     header {
         padding: 1.5rem 1.25rem;
+    }
+
+    .auth-bar {
+        justify-content: center;
     }
     
     header h1 {
