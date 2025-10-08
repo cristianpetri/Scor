@@ -13,6 +13,7 @@ let authDropdownInitialized = false;
 const APP_TITLE_STORAGE_KEY = 'tournament_app_title';
 const DEFAULT_APP_TITLE = '🏐 Manager Turneu Volei';
 
+// Funcții pentru titlu aplicație
 function getStoredAppTitle() {
     try {
         const storedTitle = localStorage.getItem(APP_TITLE_STORAGE_KEY);
@@ -28,37 +29,54 @@ function getStoredAppTitle() {
 function applyAppTitle(title) {
     const sanitizedTitle = title && title.trim() ? title.trim() : DEFAULT_APP_TITLE;
     const heading = document.getElementById('app-title');
-
     if (heading) {
         heading.textContent = sanitizedTitle;
     }
-
     document.title = sanitizedTitle;
 }
 
 function initializeAppTitle() {
     const storedTitle = getStoredAppTitle();
     applyAppTitle(storedTitle);
-
     const input = document.getElementById('app-title-input');
     if (input) {
         input.value = storedTitle;
     }
 }
 
-function setAuthPanelState(shouldOpen) {
-    if (!authPanel || !authToggleButton) {
-        return;
+function saveAppTitle() {
+    const input = document.getElementById('app-title-input');
+    if (!input) return;
+    const value = input.value.trim();
+    const finalTitle = value || DEFAULT_APP_TITLE;
+    try {
+        localStorage.setItem(APP_TITLE_STORAGE_KEY, finalTitle);
+    } catch (error) {
+        console.warn('Nu am putut salva titlul:', error);
     }
+    applyAppTitle(finalTitle);
+    input.value = finalTitle;
+    showAppTitleFeedback('Titlul a fost salvat!');
+}
 
-    const open = typeof shouldOpen === 'boolean'
-        ? shouldOpen
-        : !authPanel.classList.contains('open');
+function showAppTitleFeedback(message) {
+    const feedback = document.getElementById('app-title-feedback');
+    if (!feedback) return;
+    feedback.textContent = message;
+    feedback.classList.add('visible');
+    setTimeout(() => {
+        feedback.textContent = '';
+        feedback.classList.remove('visible');
+    }, 2500);
+}
 
+// Autentificare
+function setAuthPanelState(shouldOpen) {
+    if (!authPanel || !authToggleButton) return;
+    const open = typeof shouldOpen === 'boolean' ? shouldOpen : !authPanel.classList.contains('open');
     authPanel.hidden = !open;
     authPanel.classList.toggle('open', open);
     authToggleButton.setAttribute('aria-expanded', open ? 'true' : 'false');
-
     if (open) {
         const usernameInput = authPanel.querySelector('#login-username');
         if (usernameInput) {
@@ -72,17 +90,10 @@ function setAuthPanelState(shouldOpen) {
 }
 
 function setupAuthDropdown() {
-    if (authDropdownInitialized) {
-        return;
-    }
-
+    if (authDropdownInitialized) return;
     authPanel = document.getElementById('auth-panel');
     authToggleButton = document.getElementById('auth-toggle');
-
-    if (!authPanel || !authToggleButton) {
-        return;
-    }
-
+    if (!authPanel || !authToggleButton) return;
     authDropdownInitialized = true;
 
     authToggleButton.addEventListener('click', event => {
@@ -91,14 +102,8 @@ function setupAuthDropdown() {
     });
 
     document.addEventListener('click', event => {
-        if (!authPanel.classList.contains('open')) {
-            return;
-        }
-
-        if (authPanel.contains(event.target) || authToggleButton.contains(event.target)) {
-            return;
-        }
-
+        if (!authPanel.classList.contains('open')) return;
+        if (authPanel.contains(event.target) || authToggleButton.contains(event.target)) return;
         setAuthPanelState(false);
     });
 
@@ -109,44 +114,62 @@ function setupAuthDropdown() {
     });
 }
 
-function showAppTitleFeedback(message) {
-    const feedback = document.getElementById('app-title-feedback');
+function showLoginFeedback(message, type = 'error') {
+    const feedback = document.getElementById('login-feedback');
     if (!feedback) return;
-
+    setAuthPanelState(true);
     feedback.textContent = message;
-    feedback.classList.add('visible');
-
-    setTimeout(() => {
-        feedback.textContent = '';
-        feedback.classList.remove('visible');
-    }, 2500);
-}
-
-function saveAppTitle() {
-    const input = document.getElementById('app-title-input');
-    if (!input) return;
-
-    const value = input.value.trim();
-    const finalTitle = value || DEFAULT_APP_TITLE;
-
-    try {
-        localStorage.setItem(APP_TITLE_STORAGE_KEY, finalTitle);
-    } catch (error) {
-        console.warn('Nu am putut salva titlul personalizat:', error);
-    }
-
-    applyAppTitle(finalTitle);
-    input.value = finalTitle;
-    showAppTitleFeedback('Titlul a fost salvat!');
-}
-
-function handleAppTitleKeydown(event) {
-    if (event.key === 'Enter') {
-        event.preventDefault();
-        saveAppTitle();
+    feedback.classList.remove('auth-feedback-error', 'auth-feedback-success', 'visible');
+    if (message) {
+        const className = type === 'success' ? 'auth-feedback-success' : 'auth-feedback-error';
+        feedback.classList.add(className, 'visible');
     }
 }
 
+function handleLoginSubmit(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    formData.append('action', 'login');
+    const submitButton = form.querySelector('button[type="submit"]');
+    if (submitButton) submitButton.disabled = true;
+    setAuthPanelState(true);
+    showLoginFeedback('Se verifică datele...', 'success');
+
+    fetch('ajax.php', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showLoginFeedback('Autentificare reușită. Se reîncarcă...', 'success');
+                window.location.reload();
+                return;
+            }
+            if (submitButton) submitButton.disabled = false;
+            showLoginFeedback(data.message || 'Autentificarea a eșuat.');
+        })
+        .catch(() => {
+            if (submitButton) submitButton.disabled = false;
+            showLoginFeedback('Nu am putut realiza autentificarea.');
+        });
+}
+
+function handleLogout(event) {
+    event.preventDefault();
+    const formData = new FormData();
+    formData.append('action', 'logout');
+    fetch('ajax.php', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+                return;
+            }
+            alert(data.message || 'Nu am putut realiza deconectarea.');
+        })
+        .catch(() => alert('Nu am putut realiza deconectarea.'));
+}
+
+// Timere
 function stopLiveTimers() {
     if (liveTimerInterval) {
         clearInterval(liveTimerInterval);
@@ -162,19 +185,14 @@ function parseDateTime(value) {
 }
 
 function formatDuration(totalSeconds) {
-    if (totalSeconds == null || !Number.isFinite(totalSeconds) || totalSeconds < 0) {
-        return '--:--';
-    }
-
+    if (totalSeconds == null || !Number.isFinite(totalSeconds) || totalSeconds < 0) return '--:--';
     const seconds = Math.floor(totalSeconds);
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const remainingSeconds = seconds % 60;
-
     if (hours > 0) {
         return `${hours}:${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
     }
-
     return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
 }
 
@@ -183,16 +201,11 @@ function updateLiveTimers() {
         const start = parseDateTime(node.dataset.durationStart || '');
         let end = parseDateTime(node.dataset.durationEnd || '');
         const isLive = node.dataset.durationLive === 'true';
-
-        if (isLive) {
-            end = new Date();
-        }
-
+        if (isLive) end = new Date();
         if (!start || !end) {
             node.textContent = '⏱️ --:--';
             return;
         }
-
         const diffSeconds = Math.max(0, (end.getTime() - start.getTime()) / 1000);
         node.textContent = `⏱️ ${formatDuration(diffSeconds)}`;
     });
@@ -201,7 +214,6 @@ function updateLiveTimers() {
 function scheduleLiveTimers(isCompleted) {
     stopLiveTimers();
     updateLiveTimers();
-
     if (!isCompleted) {
         liveTimerInterval = setInterval(updateLiveTimers, 1000);
     }
@@ -211,21 +223,13 @@ function buildDurationInfo(startValue, endValue, shouldRun) {
     const start = parseDateTime(startValue || '');
     let end = parseDateTime(endValue || '');
     let isLive = Boolean(shouldRun && start);
-
-    if (!start) {
-        isLive = false;
-    }
-
-    if (isLive) {
-        end = new Date();
-    }
-
+    if (!start) isLive = false;
+    if (isLive) end = new Date();
     let display = '--:--';
     if (start && (end || isLive)) {
         const diffSeconds = Math.max(0, ((isLive ? Date.now() : end.getTime()) - start.getTime()) / 1000);
         display = formatDuration(diffSeconds);
     }
-
     return {
         start: start && startValue ? startValue : '',
         end: !isLive && end && endValue ? endValue : '',
@@ -238,19 +242,19 @@ function durationAttributes(info) {
     return `data-duration-start="${info.start}" data-duration-end="${info.end}" data-duration-live="${info.live ? 'true' : 'false'}"`;
 }
 
-// Inițializare după încărcarea paginii
+// Inițializare
 document.addEventListener('DOMContentLoaded', () => {
-    const activeNav = document.querySelector('.nav-btn.active');
-    if (activeNav) {
-        currentView = activeNav.dataset.view;
-    }
-
     initializeAppTitle();
     setupAuthDropdown();
 
     const titleInput = document.getElementById('app-title-input');
     if (titleInput) {
-        titleInput.addEventListener('keydown', handleAppTitleKeydown);
+        titleInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                saveAppTitle();
+            }
+        });
     }
 
     const loginForm = document.getElementById('login-form');
@@ -263,264 +267,189 @@ document.addEventListener('DOMContentLoaded', () => {
         logoutButton.addEventListener('click', handleLogout);
     }
 
+    // Încarcă datele inițiale
     loadTeams();
     loadMatches();
+    if (isAdminUser) {
+        loadAdminMatches();
+    }
 });
 
-// Schimbă view-ul
+// Navigare
 document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.addEventListener('click', function() {
-        const view = this.dataset.view;
-        switchView(view);
+        switchView(this.dataset.view);
     });
 });
 
 function switchView(view) {
-    const targetView = document.getElementById('view-' + view);
-    if (!targetView) {
-        console.warn(`View-ul "${view}" nu este disponibil pentru acest utilizator.`);
-        return;
-    }
-
     currentView = view;
-
-    // Update butoane navigare
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.classList.remove('active');
         if (btn.dataset.view === view) {
             btn.classList.add('active');
         }
     });
-
-    // Update views
     document.querySelectorAll('.view').forEach(v => {
         v.classList.remove('active');
     });
-    targetView.classList.add('active');
-
-    // Încarcă date pentru view
-    if (view !== 'live') {
-        stopLiveTimers();
+    const targetView = document.getElementById('view-' + view);
+    if (targetView) {
+        targetView.classList.add('active');
     }
-
+    if (view !== 'live') stopLiveTimers();
     if (view === 'matches') loadMatches();
     if (view === 'standings') loadStandings();
     if (view === 'stats') loadStats();
     if (view === 'live') loadLiveMatch();
+    if (view === 'admin' && isAdminUser) {
+        loadTeams();
+        loadAdminMatches();
+    }
 }
 
 function ensureAdminClient() {
-    if (isAdminUser) {
-        return true;
-    }
-
-    alert('Această acțiune este disponibilă doar administratorilor. Autentifică-te pentru a continua.');
+    if (isAdminUser) return true;
+    alert('Această acțiune este disponibilă doar administratorilor.');
     return false;
 }
 
 function handleUnauthorizedResponse(data) {
     if (data && data.error === 'unauthorized') {
-        alert(data.message || 'Această acțiune necesită autentificare de administrator.');
+        alert(data.message || 'Această acțiune necesită autentificare.');
         return true;
     }
     return false;
 }
 
-// Încarcă echipe
+// Echipe
 function loadTeams() {
     fetch('ajax.php?action=get_teams')
         .then(r => r.json())
         .then(data => {
             const teams = Array.isArray(data.teams) ? data.teams : [];
             const countElement = document.getElementById('team-count');
-            if (countElement) {
-                countElement.textContent = teams.length;
-            }
-
+            if (countElement) countElement.textContent = teams.length;
             const container = document.getElementById('teams-list');
             if (!container) return;
-
-            container.innerHTML = teams.map(team => {
-                const deleteButton = isAdminUser
-                    ? `<button onclick="deleteTeam(${team.id})">🗑️</button>`
-                    : '';
-
-                return `
-                    <div class="team-item">
-                        <span><strong>${team.name}</strong></span>
-                        ${deleteButton}
-                    </div>
-                `;
-            }).join('');
-        })
-        .catch(() => {
-            const container = document.getElementById('teams-list');
-            if (container) {
-                container.innerHTML = '<p class="text-center">Eroare la încărcarea echipelor.</p>';
+            if (teams.length === 0) {
+                container.innerHTML = '<p class="text-center" style="color: #6b7280;">Nu există echipe înregistrate.</p>';
+                return;
             }
+            container.innerHTML = teams.map(team => `
+                <div class="team-item">
+                    <span><strong>${team.name}</strong></span>
+                    <button onclick="deleteTeam(${team.id})">🗑️</button>
+                </div>
+            `).join('');
         });
 }
 
-// Adaugă echipă
 function addTeam() {
     if (!ensureAdminClient()) return;
-
     const input = document.getElementById('team-name');
     if (!input) return;
-
     const name = input.value.trim();
-
     if (!name) {
         alert('Introdu numele echipei!');
         return;
     }
-
     const formData = new FormData();
     formData.append('action', 'add_team');
     formData.append('name', name);
-
-    fetch('ajax.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (handleUnauthorizedResponse(data)) return;
-        if (data.success) {
-            input.value = '';
-            loadTeams();
-        }
-        if (!data.success && data.message) {
-            alert(data.message);
-        }
-    });
+    fetch('ajax.php', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            if (handleUnauthorizedResponse(data)) return;
+            if (data.success) {
+                input.value = '';
+                loadTeams();
+                loadAdminMatches();
+            }
+            if (!data.success && data.message) alert(data.message);
+        });
 }
 
-// Șterge echipă
 function deleteTeam(id) {
     if (!ensureAdminClient()) return;
     if (!confirm('Sigur vrei să ștergi această echipă?')) return;
-
     const formData = new FormData();
     formData.append('action', 'delete_team');
     formData.append('id', id);
-
-    fetch('ajax.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (handleUnauthorizedResponse(data)) return;
-        if (data.success) {
-            loadTeams();
-            loadMatches();
-            if (currentView === 'standings') loadStandings();
-            if (currentView === 'stats') loadStats();
-        }
-        if (!data.success && data.message) {
-            alert(data.message);
-        }
-    });
+    fetch('ajax.php', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            if (handleUnauthorizedResponse(data)) return;
+            if (data.success) {
+                loadTeams();
+                loadMatches();
+                loadAdminMatches();
+                if (currentView === 'standings') loadStandings();
+                if (currentView === 'stats') loadStats();
+            }
+            if (!data.success && data.message) alert(data.message);
+        });
 }
 
-// Generează meciuri
 function generateMatches() {
     if (!ensureAdminClient()) return;
     const selectedFormat = document.querySelector('input[name="format"]:checked');
     const format = selectedFormat ? selectedFormat.value : '3';
-
     if (!confirm('Generează meciurile? Meciurile existente vor fi șterse!')) return;
-
     const formData = new FormData();
     formData.append('action', 'generate_matches');
     formData.append('format', format);
-
-    fetch('ajax.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (handleUnauthorizedResponse(data)) return;
-        if (!data.success) {
-            alert(data.message || 'Eroare la generarea meciurilor.');
-            return;
-        }
-
-        let message = 'Meciuri generate cu succes!';
-        if (data.warning) {
-            message += `\n\n${data.warning}`;
-        }
-
-        alert(message);
-        loadMatches();
-        switchView('matches');
-    })
-    .catch(() => {
-        alert('Eroare la generarea meciurilor.');
-    });
+    fetch('ajax.php', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            if (handleUnauthorizedResponse(data)) return;
+            if (!data.success) {
+                alert(data.message || 'Eroare la generarea meciurilor.');
+                return;
+            }
+            let message = 'Meciuri generate cu succes!';
+            if (data.warning) message += `\n\n${data.warning}`;
+            alert(message);
+            loadMatches();
+            loadAdminMatches();
+            switchView('matches');
+        });
 }
 
-// Încarcă meciuri
+// Meciuri
 function loadMatches() {
     fetch('ajax.php?action=get_matches')
         .then(r => r.json())
         .then(data => {
             const container = document.getElementById('matches-list');
             if (!container) return;
-
             const matches = Array.isArray(data.matches) ? data.matches : [];
-
             if (matches.length === 0) {
-                const emptyMessage = isAdminUser
-                    ? 'Nu există meciuri generate. Mergi la Setup pentru a genera meciuri.'
-                    : 'Nu există meciuri generate. Contactează un administrator pentru a configura meciurile.';
-                container.innerHTML = `<p class="text-center">${emptyMessage}</p>`;
+                container.innerHTML = '<p class="text-center">Nu există meciuri generate.</p>';
                 return;
             }
-
-            container.innerHTML = matches.map((match, idx) => {
-                const winnerMarkup = match.status === 'completed' ? `
-                                <div class="winner">Câștigător: ${match.winner_name} (${match.sets_team1}-${match.sets_team2})</div>
-                            ` : '';
-
-                let actionsMarkup = `<button class="btn btn-secondary" onclick="viewMatchStats(${match.id})">📊 Detalii</button>`;
-
-                if (isAdminUser) {
-                    const reorderControls = match.status === 'pending' ? `
-                                <div class="match-controls">
-                                    ${idx > 0 ? `<button onclick=\"moveMatch(${match.id}, ${match.match_order - 1})\">⬆️</button>` : ''}
-                                    ${idx < matches.length - 1 ? `<button onclick=\"moveMatch(${match.id}, ${match.match_order + 1})\">⬇️</button>` : ''}
-                                </div>
-                    ` : '';
-
-                    const startButton = match.status === 'pending'
-                        ? `<button class="btn btn-primary" onclick="startMatch(${match.id})">▶️ Start</button>`
-                        : '';
-
-                    actionsMarkup = `
-                        ${reorderControls}
-                        ${startButton}
-                        <button class="btn btn-secondary" onclick="viewMatchStats(${match.id})">📊 Detalii</button>
-                    `;
-                }
-
+            container.innerHTML = matches.map((match) => {
+                const statusBadge = match.status === 'completed' 
+                    ? '<span class="match-status match-status-completed">Finalizat</span>'
+                    : match.status === 'live' 
+                        ? '<span class="match-status match-status-live">În desfășurare</span>'
+                        : '<span class="match-status match-status-pending">Programat</span>';
+                const winnerInfo = match.status === 'completed' 
+                    ? `<div class="winner">Câștigător: ${match.winner_name} (${match.sets_team1}-${match.sets_team2})</div>`
+                    : '';
                 return `
-                <div class="match-item ${match.status === 'completed' ? 'completed' : ''} ${match.status === 'live' ? 'live' : ''}">
+                <div class="match-item ${match.status}">
                     <div class="match-header">
                         <div class="match-info">
                             <div class="match-meta">
                                 <span class="match-number">Meci #${match.match_order}</span>
-                                <span class="match-status match-status-${match.status}">
-                                    ${match.status === 'live' ? 'În desfășurare' : (match.status === 'completed' ? 'Finalizat' : 'Programat')}
-                                </span>
+                                ${statusBadge}
                             </div>
                             <h3>${match.team1_name} vs ${match.team2_name}</h3>
-                            ${winnerMarkup}
+                            ${winnerInfo}
                         </div>
                         <div class="match-actions">
-                            ${actionsMarkup}
+                            <button class="btn btn-secondary" onclick="viewMatchStats(${match.id})">📊 Detalii</button>
                         </div>
                     </div>
                 </div>
@@ -529,94 +458,162 @@ function loadMatches() {
         });
 }
 
-// Mută meci
+function loadAdminMatches() {
+    if (!isAdminUser) return;
+    fetch('ajax.php?action=get_matches')
+        .then(r => r.json())
+        .then(data => {
+            const container = document.getElementById('admin-matches-list');
+            if (!container) return;
+            const matches = Array.isArray(data.matches) ? data.matches : [];
+            if (matches.length === 0) {
+                container.innerHTML = '<p class="text-center">Nu există meciuri generate.</p>';
+                return;
+            }
+            container.innerHTML = matches.map((match, idx) => {
+                const statusText = match.status === 'completed' 
+                    ? `Finalizat - ${match.winner_name} (${match.sets_team1}-${match.sets_team2})`
+                    : match.status === 'live' ? 'În desfășurare' : 'Programat';
+                const reorderControls = match.status === 'pending' ? `
+                    <div class="match-controls">
+                        ${idx > 0 ? `<button onclick="moveMatch(${match.id}, ${match.match_order - 1})" class="btn btn-secondary" style="padding: 8px 12px;">⬆️</button>` : ''}
+                        ${idx < matches.length - 1 ? `<button onclick="moveMatch(${match.id}, ${match.match_order + 1})" class="btn btn-secondary" style="padding: 8px 12px;">⬇️</button>` : ''}
+                    </div>
+                ` : '';
+                const actionButton = match.status === 'pending'
+                    ? `<button class="btn btn-success" onclick="startMatchAdmin(${match.id})">▶️ Pornește</button>`
+                    : match.status === 'live'
+                        ? `<button class="btn btn-primary" onclick="controlLiveMatch(${match.id})">⚡ Control Live</button>`
+                        : '';
+                return `
+                <div class="admin-match-item ${match.status}">
+                    <div class="admin-match-info">
+                        <h4>Meci #${match.match_order}: ${match.team1_name} vs ${match.team2_name}</h4>
+                        <p>${statusText}</p>
+                    </div>
+                    <div class="admin-match-actions">
+                        ${reorderControls}
+                        ${actionButton}
+                    </div>
+                </div>
+                `;
+            }).join('');
+        });
+}
+
 function moveMatch(matchId, newOrder) {
     if (!ensureAdminClient()) return;
     const formData = new FormData();
     formData.append('action', 'update_match_order');
     formData.append('match_id', matchId);
     formData.append('new_order', newOrder);
-
-    fetch('ajax.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (handleUnauthorizedResponse(data)) return;
-        if (data.success) {
-            loadMatches();
-        }
-        if (!data.success && data.message) {
-            alert(data.message);
-        }
-    });
+    fetch('ajax.php', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            if (handleUnauthorizedResponse(data)) return;
+            if (data.success) {
+                loadMatches();
+                loadAdminMatches();
+            }
+        });
 }
 
-// Start meci
-function startMatch(matchId) {
+function startMatchAdmin(matchId) {
     if (!ensureAdminClient()) return;
-    currentMatchId = matchId;
-
     const formData = new FormData();
     formData.append('action', 'start_match');
     formData.append('match_id', matchId);
-
-    fetch('ajax.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (handleUnauthorizedResponse(data)) {
-            currentMatchId = null;
-            return;
-        }
-        if (!data.success) {
-            alert(data.message || 'Nu am putut porni meciul.');
-            currentMatchId = null;
-            return;
-        }
-
-        switchView('live');
-        loadMatches();
-    })
-    .catch(() => {
-        alert('Nu am putut porni meciul.');
-        currentMatchId = null;
-    });
+    fetch('ajax.php', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            if (handleUnauthorizedResponse(data)) return;
+            if (!data.success) {
+                alert(data.message || 'Nu am putut porni meciul.');
+                return;
+            }
+            currentMatchId = matchId;
+            loadAdminMatches();
+            loadMatches();
+            controlLiveMatch(matchId);
+        });
 }
 
-// Vizualizare meci finalizat sau live
+function controlLiveMatch(matchId) {
+    if (!ensureAdminClient()) return;
+    currentMatchId = matchId;
+    fetch(`ajax.php?action=get_match_details&match_id=${matchId}`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.match) {
+                alert('Meciul nu a fost găsit.');
+                return;
+            }
+            const liveSection = document.getElementById('admin-live-section');
+            const liveControls = document.getElementById('admin-live-controls');
+            if (!liveSection || !liveControls) return;
+            liveSection.style.display = 'block';
+            const match = data.match;
+            const sets = data.sets || [];
+            const points = data.points || [];
+            const completedSetsCount = Number(match.sets_team1) + Number(match.sets_team2);
+            const currentSetNumber = completedSetsCount + 1;
+            const currentSetData = sets.find(set => Number(set.set_number) === currentSetNumber) || {
+                score_team1: 0, score_team2: 0
+            };
+            const currentPointsTeam1 = Number(currentSetData.score_team1) || 0;
+            const currentPointsTeam2 = Number(currentSetData.score_team2) || 0;
+            liveControls.innerHTML = `
+                <div class="admin-live-scoreboard">
+                    <h4 style="text-align: center; margin-bottom: 20px;">${match.team1_name} vs ${match.team2_name}</h4>
+                    <p style="text-align: center; margin-bottom: 20px;">Set curent: ${currentSetNumber} | Seturi: ${match.sets_team1}-${match.sets_team2}</p>
+                    <div class="admin-live-teams">
+                        <div class="admin-live-team">
+                            <h4>${match.team1_name}</h4>
+                            <div class="admin-live-score">${currentPointsTeam1}</div>
+                            <button class="btn btn-primary btn-full" onclick="addPointLive('team1')">+ Punct</button>
+                        </div>
+                        <div class="admin-live-team">
+                            <h4>${match.team2_name}</h4>
+                            <div class="admin-live-score">${currentPointsTeam2}</div>
+                            <button class="btn btn-danger btn-full" onclick="addPointLive('team2')">+ Punct</button>
+                        </div>
+                    </div>
+                    ${points.length > 0 ? `
+                        <div style="text-align: center; margin-top: 20px;">
+                            <button class="btn btn-warning" onclick="removeLastPoint()">↩️ Anulează ultimul punct</button>
+                        </div>
+                    ` : ''}
+                </div>
+                <div style="text-align: center; margin-top: 16px;">
+                    <button class="btn btn-secondary" onclick="viewMatchStats(${matchId})">📊 Vezi detalii complete</button>
+                </div>
+            `;
+            liveSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+}
+
 function viewMatchStats(matchId) {
     currentMatchId = matchId;
     switchView('live');
 }
 
-// Încarcă detalii meci live
 function loadLiveMatch() {
     const container = document.getElementById('live-match-container');
     if (!container) return;
-
     if (!currentMatchId) {
         stopLiveTimers();
-        container.innerHTML = '<p class="text-center">Selectează un meci din lista de meciuri pentru a începe</p>';
+        container.innerHTML = '<p class="text-center">Selectează un meci din lista de meciuri pentru a urmări</p>';
         return;
     }
-
     fetch(`ajax.php?action=get_match_details&match_id=${currentMatchId}`)
         .then(r => r.json())
         .then(data => {
             if (!data.match) {
                 stopLiveTimers();
-                container.innerHTML = '<p class="text-center">Meciul selectat nu a fost găsit.</p>';
+                container.innerHTML = '<p class="text-center">Meciul nu a fost găsit.</p>';
                 return;
             }
             renderLiveMatch(data);
-        })
-        .catch(() => {
-            stopLiveTimers();
-            container.innerHTML = '<p class="text-center">Eroare la încărcarea meciului.</p>';
         });
 }
 
@@ -624,28 +621,19 @@ function renderLiveMatch(data) {
     const { match, sets = [], points = [] } = data;
     const container = document.getElementById('live-match-container');
     if (!container) return;
-
     const isCompleted = match.status === 'completed';
-    const allowLiveControls = isAdminUser && !isCompleted;
     const completedSetsCount = Number(match.sets_team1) + Number(match.sets_team2);
     const currentSetNumber = isCompleted ? Math.max(completedSetsCount, 1) : completedSetsCount + 1;
-    const currentSetData = (sets.find(set => Number(set.set_number) === currentSetNumber) || {
-        set_number: currentSetNumber,
-        score_team1: 0,
-        score_team2: 0,
-        winner: null
-    });
+    const currentSetData = sets.find(set => Number(set.set_number) === currentSetNumber) || {
+        set_number: currentSetNumber, score_team1: 0, score_team2: 0, winner: null
+    };
     const setsToWin = Math.ceil(match.match_format / 2);
-
     const statusText = isCompleted
         ? `Meci finalizat. Scor seturi: ${match.sets_team1}-${match.sets_team2}`
         : `Set curent: ${currentSetNumber} · Seturi câștigate: ${match.sets_team1}-${match.sets_team2}`;
-
     const currentPointsTeam1 = Number(currentSetData.score_team1) || 0;
     const currentPointsTeam2 = Number(currentSetData.score_team2) || 0;
-
     const sortedSets = [...sets].sort((a, b) => Number(a.set_number) - Number(b.set_number));
-
     let setsRows = sortedSets.map(set => `
         <tr class="${set.winner ? 'set-complete' : (Number(set.set_number) === currentSetNumber && !isCompleted ? 'set-current' : '')}">
             <td>Set ${set.set_number}</td>
@@ -654,60 +642,37 @@ function renderLiveMatch(data) {
             <td>${set.winner ? (set.winner === 'team1' ? match.team1_name : match.team2_name) : (Number(set.set_number) === currentSetNumber && !isCompleted ? 'În desfășurare' : '-')}</td>
         </tr>
     `).join('');
-
     if (!isCompleted && !sortedSets.some(set => Number(set.set_number) === currentSetNumber)) {
-        setsRows += `
-            <tr class="set-current">
-                <td>Set ${currentSetNumber}</td>
-                <td>0</td>
-                <td>0</td>
-                <td>În așteptare</td>
-            </tr>
-        `;
+        setsRows += `<tr class="set-current"><td>Set ${currentSetNumber}</td><td>0</td><td>0</td><td>În așteptare</td></tr>`;
     }
-
     if (!setsRows) {
-        setsRows = `
-            <tr class="set-current">
-                <td>Set 1</td>
-                <td>0</td>
-                <td>0</td>
-                <td>În așteptare</td>
-            </tr>
-        `;
+        setsRows = `<tr class="set-current"><td>Set 1</td><td>0</td><td>0</td><td>În așteptare</td></tr>`;
     }
-
     const winnerId = match.winner_id ? Number(match.winner_id) : null;
     const team1Winner = isCompleted && winnerId && winnerId === Number(match.team1_id);
     const team2Winner = isCompleted && winnerId && winnerId === Number(match.team2_id);
     const pointsLabel = isCompleted ? 'Puncte în ultimul set' : `Puncte în setul ${currentSetNumber}`;
     const team1WinnerTag = team1Winner ? '<span class="winner-tag">Câștigător</span>' : '';
     const team2WinnerTag = team2Winner ? '<span class="winner-tag">Câștigător</span>' : '';
-
     const pointsBySet = (points || []).reduce((acc, point) => {
         if (!acc[point.set_number]) acc[point.set_number] = [];
         acc[point.set_number].push(point);
         return acc;
     }, {});
-
     const matchDurationInfo = buildDurationInfo(
         points[0]?.created_at || '',
         points.length ? points[points.length - 1].created_at : '',
         !isCompleted && points.length > 0
     );
-
     const matchDurationAttrs = durationAttributes(matchDurationInfo);
     const matchDurationText = `⏱️ ${matchDurationInfo.display}`;
     const secondaryMetaLabel = isCompleted ? 'Seturi jucate' : 'Set curent';
     const secondaryMetaValue = isCompleted ? completedSetsCount : currentSetNumber;
-    const removePointButton = (allowLiveControls && points.length) ? '<button class="btn-undo" onclick="removeLastPoint()">↩️ Anulează ultimul punct</button>' : '';
-
     const setNumbers = Array.from(new Set([
         ...sortedSets.map(set => Number(set.set_number)),
         ...Object.keys(pointsBySet).map(Number),
         !isCompleted ? currentSetNumber : null
     ].filter(Boolean))).sort((a, b) => a - b);
-
     const timelineSetsMarkup = setNumbers.length ? setNumbers.map(setNumber => {
         const setDetails = sortedSets.find(set => Number(set.set_number) === setNumber) || null;
         const setPoints = (pointsBySet[setNumber] || []).slice().sort((a, b) => Number(a.point_number) - Number(b.point_number));
@@ -733,7 +698,6 @@ function renderLiveMatch(data) {
                 </div>
             `;
         }
-
         const sequenceBadges = setPoints.map((point, idx) => {
             const scorerClass = point.scorer === 'team1' ? 'team1' : 'team2';
             const badgeClasses = ['point-badge', scorerClass];
@@ -746,7 +710,6 @@ function renderLiveMatch(data) {
             const tooltip = `${match.team1_name} ${displayScoreTeam1} - ${match.team2_name} ${displayScoreTeam2}`;
             return `<span class="${badgeClasses.join(' ')}" title="${tooltip}">${scoreLabel}</span>`;
         }).join('');
-
         return `
             <div class="set-timeline ${highlightActive ? 'set-timeline-live' : ''}">
                 <div class="set-timeline-header">
@@ -762,7 +725,6 @@ function renderLiveMatch(data) {
             </div>
         `;
     }).join('') : '';
-
     const timelineMarkup = timelineSetsMarkup
         ? `
             <div class="points-timeline-content">
@@ -774,7 +736,6 @@ function renderLiveMatch(data) {
             </div>
         `
         : '<p class="timeline-empty">Nu există date pentru acest meci.</p>';
-
     const scoreboard = `
         <div class="scoreboard">
             <div class="scoreboard-header">
@@ -800,14 +761,12 @@ function renderLiveMatch(data) {
                     <div class="team-name">${match.team1_name}</div>
                     <div class="team-points">${currentPointsTeam1}</div>
                     <div class="team-meta">${pointsLabel}</div>
-                    ${allowLiveControls ? `<button class="btn-score" onclick="addPointLive('team1')">+ Punct</button>` : ''}
                 </div>
                 <div class="team-card team2 ${team2Winner ? 'winner' : ''}">
                     ${team2WinnerTag}
                     <div class="team-name">${match.team2_name}</div>
                     <div class="team-points">${currentPointsTeam2}</div>
                     <div class="team-meta">${pointsLabel}</div>
-                    ${allowLiveControls ? `<button class="btn-score" onclick="addPointLive('team2')">+ Punct</button>` : ''}
                 </div>
             </div>
             <div class="scoreboard-meta">
@@ -820,10 +779,8 @@ function renderLiveMatch(data) {
                     <span class="meta-value">${secondaryMetaValue}</span>
                 </div>
             </div>
-            ${removePointButton ? `<div class="scoreboard-actions">${removePointButton}</div>` : ''}
         </div>
     `;
-
     container.innerHTML = `
         ${scoreboard}
         ${isCompleted ? `<div class="winner-banner">Câștigător: <strong>${match.winner_name}</strong></div>` : ''}
@@ -848,84 +805,66 @@ function renderLiveMatch(data) {
             ${timelineMarkup}
         </div>
     `;
-
     scheduleLiveTimers(isCompleted);
 }
 
 function addPointLive(teamKey) {
     if (!ensureAdminClient()) return;
     if (!currentMatchId) return;
-
     const formData = new FormData();
     formData.append('action', 'add_point');
     formData.append('match_id', currentMatchId);
     formData.append('scorer', teamKey);
-
-    fetch('ajax.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (handleUnauthorizedResponse(data)) return;
-        if (!data.success) {
-            alert(data.message || 'Nu am putut adăuga punctul.');
-            return;
-        }
-        loadLiveMatch();
-        loadMatches();
-        if (currentView === 'standings') loadStandings();
-        if (currentView === 'stats') loadStats();
-    })
-    .catch(() => {
-        alert('Nu am putut adăuga punctul.');
-    });
+    fetch('ajax.php', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            if (handleUnauthorizedResponse(data)) return;
+            if (!data.success) {
+                alert(data.message || 'Nu am putut adăuga punctul.');
+                return;
+            }
+            controlLiveMatch(currentMatchId);
+            loadMatches();
+            loadAdminMatches();
+            if (currentView === 'live') loadLiveMatch();
+            if (currentView === 'standings') loadStandings();
+            if (currentView === 'stats') loadStats();
+        });
 }
 
 function removeLastPoint() {
     if (!ensureAdminClient()) return;
     if (!currentMatchId) return;
     if (!confirm('Ești sigur că vrei să anulezi ultimul punct înregistrat?')) return;
-
     const formData = new FormData();
     formData.append('action', 'remove_last_point');
     formData.append('match_id', currentMatchId);
-
-    fetch('ajax.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (handleUnauthorizedResponse(data)) return;
-        if (!data.success) {
-            alert(data.message || 'Nu am putut șterge ultimul punct.');
-            return;
-        }
-
-        loadLiveMatch();
-        loadMatches();
-    })
-    .catch(() => {
-        alert('Nu am putut șterge ultimul punct.');
-    });
+    fetch('ajax.php', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            if (handleUnauthorizedResponse(data)) return;
+            if (!data.success) {
+                alert(data.message || 'Nu am putut șterge ultimul punct.');
+                return;
+            }
+            controlLiveMatch(currentMatchId);
+            loadMatches();
+            loadAdminMatches();
+            if (currentView === 'live') loadLiveMatch();
+        });
 }
 
-// Încarcă clasamentul
 function loadStandings() {
     fetch('ajax.php?action=get_teams')
         .then(r => r.json())
         .then(data => {
             const container = document.getElementById('standings-table');
             if (!container) return;
-
             lastStandings = Array.isArray(data.teams) ? data.teams : [];
-
             if (lastStandings.length === 0) {
                 container.innerHTML = '<p class="text-center">Nu există echipe înregistrate.</p>';
                 return;
             }
-
             container.innerHTML = `
                 <div class="standings-table-wrapper">
                     <table>
@@ -945,27 +884,14 @@ function loadStandings() {
                         <tbody>
                             ${lastStandings.map((team, idx) => {
                                 const rank = idx + 1;
-                                const medalClass = rank === 1
-                                    ? 'standings-gold'
-                                    : rank === 2
-                                        ? 'standings-silver'
-                                        : rank === 3
-                                            ? 'standings-bronze'
-                                            : '';
+                                const medalClass = rank === 1 ? 'standings-gold' : rank === 2 ? 'standings-silver' : rank === 3 ? 'standings-bronze' : '';
                                 const setsDiff = team.sets_won - team.sets_lost;
                                 const pointsDiff = team.points_won - team.points_lost;
-                                const formatDiff = value => {
-                                    if (value > 0) return `+${value}`;
-                                    if (value === 0) return '0';
-                                    return `${value}`;
-                                };
-
+                                const formatDiff = value => value > 0 ? `+${value}` : value === 0 ? '0' : `${value}`;
                                 return `
                                     <tr class="standings-row ${medalClass}">
                                         <td class="standings-rank"><span class="rank-badge">#${rank}</span></td>
-                                        <td class="standings-team">
-                                            <span class="team-name">${team.name}</span>
-                                        </td>
+                                        <td class="standings-team"><span class="team-name">${team.name}</span></td>
                                         <td class="standings-points"><span class="points-pill">${team.ranking_points} pct</span></td>
                                         <td>${team.wins}</td>
                                         <td>${team.losses}</td>
@@ -993,28 +919,147 @@ function loadStandings() {
         });
 }
 
+function loadStats() {
+    fetch('ajax.php?action=get_stats')
+        .then(r => r.json())
+        .then(data => {
+            const summaryContainer = document.getElementById('stats-summary');
+            const matchesContainer = document.getElementById('stats-matches');
+            const teamsContainer = document.getElementById('stats-teams');
+            if (!summaryContainer || !matchesContainer) return;
+            lastStatsData = {
+                teams: Array.isArray(data.teams) ? data.teams : [],
+                matches: Array.isArray(data.matches) ? data.matches : []
+            };
+            const totalTeams = lastStatsData.teams.length;
+            const completedMatches = lastStatsData.matches.filter(match => match.status === 'completed');
+            const totalPoints = lastStatsData.teams.reduce((acc, team) => acc + (team.points_won || 0), 0);
+            summaryContainer.innerHTML = `
+                <div class="stat-card"><h3>Echipe</h3><p>${totalTeams}</p></div>
+                <div class="stat-card"><h3>Meciuri Finalizate</h3><p>${completedMatches.length}</p></div>
+                <div class="stat-card"><h3>Puncte Marcate</h3><p>${totalPoints}</p></div>
+            `;
+            if (teamsContainer) {
+                if (!lastStatsData.teams.length) {
+                    teamsContainer.innerHTML = '<p class="text-center">Nu există echipe înregistrate.</p>';
+                } else {
+                    const teamCards = lastStatsData.teams.map(team => {
+                        const matchesPlayed = Number(team.wins || 0) + Number(team.losses || 0);
+                        const setsDiff = Number(team.sets_won || 0) - Number(team.sets_lost || 0);
+                        const pointsDiff = Number(team.points_won || 0) - Number(team.points_lost || 0);
+                        const formatDiff = value => value > 0 ? `+${value}` : value === 0 ? '0' : `${value}`;
+                        const badges = matchesPlayed ? [...Array(Number(team.wins || 0)).fill('win'), ...Array(Number(team.losses || 0)).fill('loss')].map(result => {
+                            const isWin = result === 'win';
+                            const classes = ['point-badge', isWin ? 'team1' : 'team2'];
+                            const label = isWin ? 'V' : 'Î';
+                            const title = isWin ? 'Victorie' : 'Înfrângere';
+                            return `<span class="${classes.join(' ')}" title="${title}">${label}</span>`;
+                        }).join('') : '';
+                        const badgesMarkup = matchesPlayed ? `<div class="team-results-badges">${badges}</div>` : '<p class="no-team-results">Nu există meciuri jucate.</p>';
+                        return `
+                            <div class="team-stat-card">
+                                <div class="team-stat-header">
+                                    <h4>${team.name}</h4>
+                                    <span class="team-stat-record">${Number(team.wins || 0)}-${Number(team.losses || 0)}</span>
+                                </div>
+                                <div class="team-stat-meta">
+                                    <span class="stat-pill">${Number(team.ranking_points || 0)} pct</span>
+                                    <span class="stat-pill matches">${matchesPlayed} meci${matchesPlayed === 1 ? '' : 'uri'} jucate</span>
+                                </div>
+                                <div class="team-stat-results">${badgesMarkup}</div>
+                                <div class="team-stat-details">
+                                    <div class="team-stat-detail">
+                                        <span class="detail-label">Seturi</span>
+                                        <span class="detail-value">${Number(team.sets_won || 0)}-${Number(team.sets_lost || 0)} (<span class="diff ${setsDiff > 0 ? 'positive' : setsDiff < 0 ? 'negative' : ''}">${formatDiff(setsDiff)}</span>)</span>
+                                    </div>
+                                    <div class="team-stat-detail">
+                                        <span class="detail-label">Raport seturi</span>
+                                        <span class="detail-value">${team.set_ratio_display || '0'}</span>
+                                    </div>
+                                    <div class="team-stat-detail">
+                                        <span class="detail-label">Puncte</span>
+                                        <span class="detail-value">${Number(team.points_won || 0)}-${Number(team.points_lost || 0)} (<span class="diff ${pointsDiff > 0 ? 'positive' : pointsDiff < 0 ? 'negative' : ''}">${formatDiff(pointsDiff)}</span>)</span>
+                                    </div>
+                                    <div class="team-stat-detail">
+                                        <span class="detail-label">Raport puncte</span>
+                                        <span class="detail-value">${team.point_ratio_display || '0'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                    teamsContainer.innerHTML = `<h3>Statistici pe echipe</h3><div class="team-stats-grid">${teamCards}</div>`;
+                }
+            }
+            if (!data.matches || data.matches.length === 0) {
+                matchesContainer.innerHTML = '<p class="text-center">Nu există meciuri înregistrate.</p>';
+                return;
+            }
+            matchesContainer.innerHTML = data.matches.map(match => {
+                const statusLabel = match.status === 'completed' ? `Finalizat${match.winner_name ? ` – Câștigător: ${match.winner_name}` : ''}` : match.status === 'live' ? 'În desfășurare' : 'Neînceput';
+                const finalScore = (match.sets_team1 || match.sets_team2) ? `${match.sets_team1}-${match.sets_team2}` : '0-0';
+                const sortedSets = Array.isArray(match.points_history) ? match.points_history.slice().sort((a, b) => Number(a.set_number) - Number(b.set_number)) : [];
+                const setsHtml = sortedSets.map(set => {
+                    const points = Array.isArray(set.points) ? set.points.slice().sort((a, b) => Number(a.point_number) - Number(b.point_number)) : [];
+                    const totalColumns = points.length;
+                    const sequenceBadges = points.map(point => {
+                        const scorerClass = point.scorer === 'team1' ? 'team1' : 'team2';
+                        const displayScoreTeam1 = Number(point.score_team1 || 0);
+                        const displayScoreTeam2 = Number(point.score_team2 || 0);
+                        const scoreLabel = `${displayScoreTeam1}-${displayScoreTeam2}`;
+                        const tooltip = `${match.team1_name} ${displayScoreTeam1} - ${match.team2_name} ${displayScoreTeam2}`;
+                        return `<span class="point-badge ${scorerClass}" title="${tooltip}">${scoreLabel}</span>`;
+                    }).join('');
+                    const pointsMarkup = totalColumns ? `
+                        <div class="timeline-team-info">
+                            <span class="team-label"><span class="team-dot team1"></span>${match.team1_name}</span>
+                            <span class="team-label"><span class="team-dot team2"></span>${match.team2_name}</span>
+                        </div>
+                        <div class="timeline-sequence">${sequenceBadges}</div>
+                    ` : '<p class="empty-points">Nu sunt puncte înregistrate.</p>';
+                    return `
+                        <div class="set-timeline">
+                            <div class="set-timeline-header">
+                                <span class="set-title">Set ${set.set_number}</span>
+                                <span class="set-score">${Number(set.score_team1 || 0)}-${Number(set.score_team2 || 0)}</span>
+                            </div>
+                            ${pointsMarkup}
+                        </div>
+                    `;
+                }).join('');
+                const historyBody = setsHtml ? `<div class="points-timeline">${setsHtml}</div>` : '<p class="empty-points">Nu există istoric de puncte.</p>';
+                return `
+                    <div class="match-history-card ${match.status}">
+                        <div class="match-history-header">
+                            <div><strong>Meci #${match.match_order}</strong> &ndash; ${match.team1_name} vs ${match.team2_name}</div>
+                            <div class="match-history-meta">
+                                <span>${statusLabel}</span>
+                                <span>Seturi: ${finalScore}</span>
+                            </div>
+                        </div>
+                        <div class="match-history-body">${historyBody}</div>
+                    </div>
+                `;
+            }).join('');
+        });
+}
+
+// Export și share
 function buildStandingsShareMessage() {
     const lines = lastStandings.map((team, idx) => {
         const rank = idx + 1;
         const setsDiff = team.sets_won - team.sets_lost;
         const pointsDiff = team.points_won - team.points_lost;
         const formatDiff = value => (value > 0 ? `+${value}` : `${value}`);
-
         return `${rank}. ${team.name} – ${team.ranking_points} pct | Victorii: ${team.wins}-${team.losses} | Seturi: ${team.sets_won}-${team.sets_lost} (${formatDiff(setsDiff)}) | Raport seturi: ${team.set_ratio_display} | Puncte: ${team.points_won}-${team.points_lost} (${formatDiff(pointsDiff)}) | Raport puncte: ${team.point_ratio_display}`;
     });
-
     return `Clasament turneu volei:\n${lines.join('\n')}`;
 }
 
 function captureStandingsCard() {
     const card = document.querySelector('#view-standings .card');
-
-    if (!card) {
-        return Promise.reject(new Error('Nu am găsit zona de clasament.'));
-    }
-
+    if (!card) return Promise.reject(new Error('Nu am găsit zona de clasament.'));
     card.classList.add('standings-export-mode');
-
     return html2canvas(card, {
         backgroundColor: '#ffffff',
         scale: window.devicePixelRatio < 2 ? 2 : window.devicePixelRatio
@@ -1039,7 +1084,6 @@ function canvasToJpegBlob(canvas) {
             }, 'image/jpeg', 0.92);
             return;
         }
-
         try {
             const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
             const base64 = dataUrl.split(',')[1];
@@ -1047,11 +1091,9 @@ function canvasToJpegBlob(canvas) {
             const length = binary.length;
             const buffer = new ArrayBuffer(length);
             const view = new Uint8Array(buffer);
-
             for (let i = 0; i < length; i += 1) {
                 view[i] = binary.charCodeAt(i);
             }
-
             resolve(new Blob([buffer], { type: 'image/jpeg' }));
         } catch (error) {
             reject(error);
@@ -1064,9 +1106,7 @@ function exportStandingsImage() {
         alert('Nu există date în clasament pentru export.');
         return;
     }
-
     const fileName = `clasament-${new Date().toISOString().slice(0, 10)}.jpg`;
-
     captureStandingsCard()
         .then(canvas => {
             const link = document.createElement('a');
@@ -1084,19 +1124,16 @@ function shareStandingsWhatsApp() {
         alert('Nu există date în clasament pentru a fi partajate.');
         return;
     }
-
     const fileName = `clasament-${new Date().toISOString().slice(0, 10)}.jpg`;
     const fallbackShare = () => {
         const message = buildStandingsShareMessage();
         const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
         window.open(url, '_blank');
     };
-
     captureStandingsCard()
         .then(canvas => canvasToJpegBlob(canvas))
         .then(blob => {
             const file = new File([blob], fileName, { type: 'image/jpeg' });
-
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
                 navigator.share({
                     files: [file],
@@ -1105,7 +1142,6 @@ function shareStandingsWhatsApp() {
                 }).catch(fallbackShare);
                 return;
             }
-
             fallbackShare();
         })
         .catch(() => {
@@ -1113,232 +1149,26 @@ function shareStandingsWhatsApp() {
         });
 }
 
-// Încarcă statistici
-function loadStats() {
-    fetch('ajax.php?action=get_stats')
-        .then(r => r.json())
-        .then(data => {
-            const summaryContainer = document.getElementById('stats-summary');
-            const matchesContainer = document.getElementById('stats-matches');
-            const teamsContainer = document.getElementById('stats-teams');
-            if (!summaryContainer || !matchesContainer) return;
-
-            lastStatsData = {
-                teams: Array.isArray(data.teams) ? data.teams : [],
-                matches: Array.isArray(data.matches) ? data.matches : []
-            };
-
-            const totalTeams = lastStatsData.teams.length;
-            const completedMatches = lastStatsData.matches.filter(match => match.status === 'completed');
-            const totalPoints = lastStatsData.teams.reduce((acc, team) => acc + (team.points_won || 0), 0);
-
-            summaryContainer.innerHTML = `
-                <div class="stat-card">
-                    <h3>Echipe</h3>
-                    <p>${totalTeams}</p>
-                </div>
-                <div class="stat-card">
-                    <h3>Meciuri Finalizate</h3>
-                    <p>${completedMatches.length}</p>
-                </div>
-                <div class="stat-card">
-                    <h3>Puncte Marcate</h3>
-                    <p>${totalPoints}</p>
-                </div>
-            `;
-
-            if (teamsContainer) {
-                if (!lastStatsData.teams.length) {
-                    teamsContainer.innerHTML = '<p class="text-center">Nu există echipe înregistrate.</p>';
-                } else {
-                    const teamCards = lastStatsData.teams.map(team => {
-                        const matchesPlayed = Number(team.wins || 0) + Number(team.losses || 0);
-                        const setsDiff = Number(team.sets_won || 0) - Number(team.sets_lost || 0);
-                        const pointsDiff = Number(team.points_won || 0) - Number(team.points_lost || 0);
-                        const formatDiff = value => {
-                            if (value > 0) return `+${value}`;
-                            if (value === 0) return '0';
-                            return `${value}`;
-                        };
-
-                        const badges = matchesPlayed
-                            ? [
-                                ...Array(Number(team.wins || 0)).fill('win'),
-                                ...Array(Number(team.losses || 0)).fill('loss')
-                            ].map(result => {
-                                const isWin = result === 'win';
-                                const classes = ['point-badge', isWin ? 'team1' : 'team2'];
-                                const label = isWin ? 'V' : 'Î';
-                                const title = isWin ? 'Victorie' : 'Înfrângere';
-                                return `<span class="${classes.join(' ')}" title="${title}">${label}</span>`;
-                            }).join('')
-                            : '';
-
-                        const badgesMarkup = matchesPlayed
-                            ? `<div class="team-results-badges" aria-label="Rezultate meciuri">${badges}</div>`
-                            : '<p class="no-team-results">Nu există meciuri jucate.</p>';
-
-                        return `
-                            <div class="team-stat-card">
-                                <div class="team-stat-header">
-                                    <h4>${team.name}</h4>
-                                    <span class="team-stat-record">${Number(team.wins || 0)}-${Number(team.losses || 0)}</span>
-                                </div>
-                                <div class="team-stat-meta">
-                                    <span class="stat-pill">${Number(team.ranking_points || 0)} pct</span>
-                                    <span class="stat-pill matches">${matchesPlayed} meci${matchesPlayed === 1 ? '' : 'uri'} jucate</span>
-                                </div>
-                                <div class="team-stat-results">
-                                    ${badgesMarkup}
-                                </div>
-                                <div class="team-stat-details">
-                                    <div class="team-stat-detail">
-                                        <span class="detail-label">Seturi</span>
-                                        <span class="detail-value">${Number(team.sets_won || 0)}-${Number(team.sets_lost || 0)} (<span class="diff ${setsDiff > 0 ? 'positive' : setsDiff < 0 ? 'negative' : ''}">${formatDiff(setsDiff)}</span>)</span>
-                                    </div>
-                                    <div class="team-stat-detail">
-                                        <span class="detail-label">Raport seturi</span>
-                                        <span class="detail-value">${team.set_ratio_display || '0'}</span>
-                                    </div>
-                                    <div class="team-stat-detail">
-                                        <span class="detail-label">Puncte</span>
-                                        <span class="detail-value">${Number(team.points_won || 0)}-${Number(team.points_lost || 0)} (<span class="diff ${pointsDiff > 0 ? 'positive' : pointsDiff < 0 ? 'negative' : ''}">${formatDiff(pointsDiff)}</span>)</span>
-                                    </div>
-                                    <div class="team-stat-detail">
-                                        <span class="detail-label">Raport puncte</span>
-                                        <span class="detail-value">${team.point_ratio_display || '0'}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
-
-                    teamsContainer.innerHTML = `
-                        <h3>Statistici pe echipe</h3>
-                        <div class="team-stats-grid">${teamCards}</div>
-                    `;
-                }
-            }
-
-            if (!data.matches || data.matches.length === 0) {
-                matchesContainer.innerHTML = '<p class="text-center">Nu există meciuri înregistrate.</p>';
-                return;
-            }
-
-            matchesContainer.innerHTML = data.matches.map(match => {
-                const statusLabel = match.status === 'completed'
-                    ? `Finalizat${match.winner_name ? ` – Câștigător: ${match.winner_name}` : ''}`
-                    : match.status === 'live'
-                        ? 'În desfășurare'
-                        : 'Neînceput';
-
-                const finalScore = (match.sets_team1 || match.sets_team2) ? `${match.sets_team1}-${match.sets_team2}` : '0-0';
-
-                const sortedSets = Array.isArray(match.points_history)
-                    ? match.points_history.slice().sort((a, b) => Number(a.set_number) - Number(b.set_number))
-                    : [];
-
-                const setsHtml = sortedSets.map(set => {
-                    const points = Array.isArray(set.points)
-                        ? set.points.slice().sort((a, b) => Number(a.point_number) - Number(b.point_number))
-                        : [];
-                    const totalColumns = points.length;
-
-                    const sequenceBadges = points.map(point => {
-                        const scorerClass = point.scorer === 'team1' ? 'team1' : 'team2';
-                        const displayScoreTeam1 = Number(point.score_team1 || 0);
-                        const displayScoreTeam2 = Number(point.score_team2 || 0);
-                        const scoreLabel = `${displayScoreTeam1}-${displayScoreTeam2}`;
-                        const tooltip = `${match.team1_name} ${displayScoreTeam1} - ${match.team2_name} ${displayScoreTeam2}`;
-                        return `<span class="point-badge ${scorerClass}" title="${tooltip}">${scoreLabel}</span>`;
-                    }).join('');
-
-                    const pointsMarkup = totalColumns ? `
-                        <div class="timeline-team-info">
-                            <span class="team-label"><span class="team-dot team1"></span>${match.team1_name}</span>
-                            <span class="team-label"><span class="team-dot team2"></span>${match.team2_name}</span>
-                        </div>
-                        <div class="timeline-sequence">${sequenceBadges}</div>
-                    ` : '<p class="empty-points">Nu sunt puncte înregistrate pentru acest set.</p>';
-
-                    return `
-                        <div class="set-timeline">
-                            <div class="set-timeline-header">
-                                <span class="set-title">Set ${set.set_number}</span>
-                                <span class="set-score">${Number(set.score_team1 || 0)}-${Number(set.score_team2 || 0)}</span>
-                            </div>
-                            ${pointsMarkup}
-                        </div>
-                    `;
-                }).join('');
-
-                const historyBody = setsHtml
-                    ? `<div class="points-timeline">${setsHtml}</div>`
-                    : '<p class="empty-points">Nu există istoric de puncte pentru acest meci.</p>';
-
-                return `
-                    <div class="match-history-card ${match.status}">
-                        <div class="match-history-header">
-                            <div>
-                                <strong>Meci #${match.match_order}</strong> &ndash; ${match.team1_name} vs ${match.team2_name}
-                            </div>
-                            <div class="match-history-meta">
-                                <span>${statusLabel}</span>
-                                <span>Seturi: ${finalScore}</span>
-                            </div>
-                        </div>
-                        <div class="match-history-body">
-                            ${historyBody}
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        })
-        .catch(() => {
-            const matchesContainer = document.getElementById('stats-matches');
-            const teamsContainer = document.getElementById('stats-teams');
-            lastStatsData = { teams: [], matches: [] };
-            if (matchesContainer) {
-                matchesContainer.innerHTML = '<p class="text-center">Nu am putut încărca statisticile.</p>';
-            }
-            if (teamsContainer) {
-                teamsContainer.innerHTML = '<p class="text-center">Nu am putut încărca statisticile echipelor.</p>';
-            }
-        });
-}
-
 function buildStatsShareMessage() {
     const totalTeams = lastStatsData.teams.length;
     const completedMatches = lastStatsData.matches.filter(match => match.status === 'completed').length;
     const totalPoints = lastStatsData.teams.reduce((acc, team) => acc + (team.points_won || 0), 0);
-
     const header = `Statistici turneu volei:\nEchipe: ${totalTeams}\nMeciuri finalizate: ${completedMatches}\nPuncte marcate: ${totalPoints}`;
-
-    if (!totalTeams) {
-        return header;
-    }
-
+    if (!totalTeams) return header;
     const formatDiff = value => (value > 0 ? `+${value}` : value === 0 ? '0' : `${value}`);
-
     const teamLines = lastStatsData.teams.map(team => {
         const matchesPlayed = Number(team.wins || 0) + Number(team.losses || 0);
         const setsDiff = Number(team.sets_won || 0) - Number(team.sets_lost || 0);
         const pointsDiff = Number(team.points_won || 0) - Number(team.points_lost || 0);
         return `${team.name}: ${team.ranking_points} pct | Victorii: ${team.wins}-${team.losses} (${matchesPlayed} meci${matchesPlayed === 1 ? '' : 'uri'}) | Seturi: ${team.sets_won}-${team.sets_lost} (${formatDiff(setsDiff)}) | Puncte: ${team.points_won}-${team.points_lost} (${formatDiff(pointsDiff)})`;
     });
-
     return `${header}\n\nEchipe:\n${teamLines.join('\n')}`;
 }
 
 function captureStatsCard() {
     const card = document.querySelector('#view-stats .card');
-
-    if (!card) {
-        return Promise.reject(new Error('Nu am găsit zona de statistici.'));
-    }
-
+    if (!card) return Promise.reject(new Error('Nu am găsit zona de statistici.'));
     card.classList.add('stats-export-mode');
-
     return html2canvas(card, {
         backgroundColor: '#ffffff',
         scale: window.devicePixelRatio < 2 ? 2 : window.devicePixelRatio
@@ -1370,19 +1200,16 @@ function shareStatsWhatsApp() {
         alert('Nu există date în statistici pentru a fi partajate.');
         return;
     }
-
     const fileName = `statistici-${new Date().toISOString().slice(0, 10)}.jpg`;
     const fallbackShare = () => {
         const message = buildStatsShareMessage();
         const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
         window.open(url, '_blank');
     };
-
     captureStatsCard()
         .then(canvas => canvasToJpegBlob(canvas))
         .then(blob => {
             const file = new File([blob], fileName, { type: 'image/jpeg' });
-
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
                 navigator.share({
                     files: [file],
@@ -1391,91 +1218,9 @@ function shareStatsWhatsApp() {
                 }).catch(fallbackShare);
                 return;
             }
-
             fallbackShare();
         })
         .catch(() => {
             alert('Nu am putut genera imaginea pentru partajare.');
-        });
-}
-
-function showLoginFeedback(message, type = 'error') {
-    const feedback = document.getElementById('login-feedback');
-    if (!feedback) return;
-
-    setAuthPanelState(true);
-
-    feedback.textContent = message;
-    feedback.classList.remove('auth-feedback-error', 'auth-feedback-success', 'visible');
-
-    if (message) {
-        const className = type === 'success' ? 'auth-feedback-success' : 'auth-feedback-error';
-        feedback.classList.add(className, 'visible');
-    }
-}
-
-function handleLoginSubmit(event) {
-    event.preventDefault();
-
-    const form = event.target;
-    const formData = new FormData(form);
-    formData.append('action', 'login');
-
-    const submitButton = form.querySelector('button[type="submit"]');
-    if (submitButton) {
-        submitButton.disabled = true;
-    }
-
-    setAuthPanelState(true);
-    showLoginFeedback('Se verifică datele...', 'success');
-
-    fetch('ajax.php', {
-        method: 'POST',
-        body: formData
-    })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                showLoginFeedback('Autentificare reușită. Se reîncarcă...', 'success');
-                window.location.reload();
-                return;
-            }
-
-            if (submitButton) {
-                submitButton.disabled = false;
-            }
-
-            showLoginFeedback(data.message || 'Autentificarea a eșuat.');
-        })
-        .catch(() => {
-            if (submitButton) {
-                submitButton.disabled = false;
-            }
-
-            showLoginFeedback('Nu am putut realiza autentificarea. Încearcă din nou.');
-        });
-}
-
-function handleLogout(event) {
-    event.preventDefault();
-
-    const formData = new FormData();
-    formData.append('action', 'logout');
-
-    fetch('ajax.php', {
-        method: 'POST',
-        body: formData
-    })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                window.location.reload();
-                return;
-            }
-
-            alert(data.message || 'Nu am putut realiza deconectarea. Încearcă din nou.');
-        })
-        .catch(() => {
-            alert('Nu am putut realiza deconectarea. Încearcă din nou.');
         });
 }

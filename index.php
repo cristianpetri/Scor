@@ -3,7 +3,6 @@ require_once 'functions.php';
 
 $currentUser = getCurrentUser();
 $isAdmin = isAdmin();
-$defaultView = $isAdmin ? 'setup' : 'matches';
 ?>
 <!DOCTYPE html>
 <html lang="ro">
@@ -18,13 +17,13 @@ $defaultView = $isAdmin ? 'setup' : 'matches';
         <header>
             <h1 id="app-title">🏐 Manager Turneu Volei</h1>
             <nav>
+                <button class="nav-btn active" data-view="matches">📋 Meciuri</button>
+                <button class="nav-btn" data-view="live">⚡ Meci Live</button>
+                <button class="nav-btn" data-view="standings">🏆 Clasament</button>
+                <button class="nav-btn" data-view="stats">📊 Statistici</button>
                 <?php if ($isAdmin): ?>
-                    <button class="nav-btn <?= $defaultView === 'setup' ? 'active' : '' ?>" data-view="setup">⚙️ Setup</button>
+                    <button class="nav-btn nav-btn-admin" data-view="admin">⚙️ Administrare</button>
                 <?php endif; ?>
-                <button class="nav-btn <?= $defaultView === 'matches' ? 'active' : '' ?>" data-view="matches">📋 Meciuri</button>
-                <button class="nav-btn <?= $defaultView === 'live' ? 'active' : '' ?>" data-view="live">⚡ Meci Live</button>
-                <button class="nav-btn <?= $defaultView === 'standings' ? 'active' : '' ?>" data-view="standings">🏆 Clasament</button>
-                <button class="nav-btn <?= $defaultView === 'stats' ? 'active' : '' ?>" data-view="stats">📊 Statistici</button>
             </nav>
             <div class="auth-bar">
                 <?php if ($currentUser): ?>
@@ -41,7 +40,7 @@ $defaultView = $isAdmin ? 'setup' : 'matches';
                     <div class="auth-dropdown">
                         <button id="auth-toggle" class="auth-toggle" type="button" aria-haspopup="true" aria-expanded="false">
                             <span class="auth-toggle-icon" aria-hidden="true">🔐</span>
-                            <span class="auth-toggle-text">Autentificare</span>
+                            <span class="auth-toggle-text">Autentificare Admin</span>
                         </button>
                         <div id="auth-panel" class="auth-panel" role="dialog" aria-modal="false" hidden>
                             <form id="login-form" class="auth-form" autocomplete="off">
@@ -63,74 +62,26 @@ $defaultView = $isAdmin ? 'setup' : 'matches';
             </div>
         </header>
 
-        <!-- VIEW: SETUP -->
-        <?php if ($isAdmin): ?>
-        <div id="view-setup" class="view <?= $defaultView === 'setup' ? 'active' : '' ?>">
+        <!-- VIEW: MATCHES (Public) -->
+        <div id="view-matches" class="view active">
             <div class="card">
-                <h2>Configurare Turneu</h2>
-                
-                <div class="form-group">
-                    <label>Format Meci:</label>
-                    <div class="radio-group">
-                        <label><input type="radio" name="format" value="3" checked> Best of 3</label>
-                        <label><input type="radio" name="format" value="5"> Best of 5</label>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="app-title-input">Titlu aplicație:</label>
-                    <div class="input-group">
-                        <input type="text" id="app-title-input" placeholder="Ex: Turneul de la Liceu" />
-                        <button onclick="saveAppTitle()" class="btn btn-secondary">💾 Salvează</button>
-                    </div>
-                    <p class="form-hint">Titlul va apărea în antet și în bara de titlu a browserului.</p>
-                    <p id="app-title-feedback" class="form-feedback" role="status" aria-live="polite"></p>
-                </div>
-
-                <div class="form-group">
-                    <label>Adaugă Echipă:</label>
-                    <div class="input-group">
-                        <input type="text" id="team-name" placeholder="Numele echipei..." />
-                        <button onclick="addTeam()" class="btn btn-primary">➕ Adaugă</button>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <h3>Echipe Înregistrate (<span id="team-count">0</span>)</h3>
-                    <div id="teams-list" class="teams-grid"></div>
-                </div>
-
-                <button onclick="generateMatches()" class="btn btn-success btn-full">
-                    🎮 Generează Meciuri
-                </button>
-            </div>
-        </div>
-        <?php endif; ?>
-
-        <!-- VIEW: MATCHES -->
-        <div id="view-matches" class="view <?= $defaultView === 'matches' ? 'active' : '' ?>">
-            <div class="card">
-                <h2>Program Meciuri</h2>
-                <?php if ($isAdmin): ?>
-                    <p class="info">💡 Poți modifica ordinea meciurilor folosind săgețile</p>
-                <?php else: ?>
-                    <p class="info">ℹ️ Programul este gestionat de administrator. Poți urmări meciurile programate mai jos.</p>
-                <?php endif; ?>
+                <h2>📋 Program Meciuri</h2>
+                <p class="info">ℹ️ Programul meciurilor din turneu. <?= $isAdmin ? 'Folosește secțiunea Administrare pentru modificări.' : '' ?></p>
                 <div id="matches-list"></div>
             </div>
         </div>
 
-        <!-- VIEW: LIVE -->
-        <div id="view-live" class="view <?= $defaultView === 'live' ? 'active' : '' ?>">
+        <!-- VIEW: LIVE (Public) -->
+        <div id="view-live" class="view">
             <div class="card">
                 <div id="live-match-container">
-                    <p class="text-center">Selectează un meci din lista de meciuri pentru a începe</p>
+                    <p class="text-center">Selectează un meci din lista de meciuri pentru a urmări</p>
                 </div>
             </div>
         </div>
 
-        <!-- VIEW: STANDINGS -->
-        <div id="view-standings" class="view <?= $defaultView === 'standings' ? 'active' : '' ?>">
+        <!-- VIEW: STANDINGS (Public) -->
+        <div id="view-standings" class="view">
             <div class="card">
                 <h2>🏆 Clasament General</h2>
                 <div class="standings-actions">
@@ -154,8 +105,8 @@ $defaultView = $isAdmin ? 'setup' : 'matches';
             </div>
         </div>
 
-        <!-- VIEW: STATS -->
-        <div id="view-stats" class="view <?= $defaultView === 'stats' ? 'active' : '' ?>">
+        <!-- VIEW: STATS (Public) -->
+        <div id="view-stats" class="view">
             <div class="card">
                 <h2>📊 Statistici Detaliate</h2>
                 <div class="stats-actions">
@@ -172,9 +123,208 @@ $defaultView = $isAdmin ? 'setup' : 'matches';
                 <div id="stats-matches"></div>
             </div>
         </div>
+
+        <!-- VIEW: ADMIN (Only for admins) -->
+        <?php if ($isAdmin): ?>
+        <div id="view-admin" class="view">
+            <div class="card">
+                <h2>⚙️ Panou de Administrare</h2>
+                
+                <div class="admin-section">
+                    <h3>🎨 Configurare Aplicație</h3>
+                    <div class="form-group">
+                        <label for="app-title-input">Titlu aplicație:</label>
+                        <div class="input-group">
+                            <input type="text" id="app-title-input" placeholder="Ex: Turneul de la Liceu" />
+                            <button onclick="saveAppTitle()" class="btn btn-secondary">💾 Salvează</button>
+                        </div>
+                        <p class="form-hint">Titlul va apărea în antet și în bara de titlu a browserului.</p>
+                        <p id="app-title-feedback" class="form-feedback" role="status" aria-live="polite"></p>
+                    </div>
+                </div>
+
+                <div class="admin-section">
+                    <h3>👥 Gestionare Echipe</h3>
+                    <div class="form-group">
+                        <label>Adaugă Echipă:</label>
+                        <div class="input-group">
+                            <input type="text" id="team-name" placeholder="Numele echipei..." />
+                            <button onclick="addTeam()" class="btn btn-primary">➕ Adaugă</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <h4>Echipe Înregistrate (<span id="team-count">0</span>)</h4>
+                        <div id="teams-list" class="teams-grid"></div>
+                    </div>
+                </div>
+
+                <div class="admin-section">
+                    <h3>🎮 Configurare Meciuri</h3>
+                    <div class="form-group">
+                        <label>Format Meci:</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="format" value="3" checked> Best of 3</label>
+                            <label><input type="radio" name="format" value="5"> Best of 5</label>
+                        </div>
+                    </div>
+
+                    <button onclick="generateMatches()" class="btn btn-success btn-full">
+                        🎮 Generează Meciuri
+                    </button>
+                </div>
+
+                <div class="admin-section">
+                    <h3>📋 Gestionare Meciuri</h3>
+                    <p class="info">💡 Modifică ordinea meciurilor sau pornește meciuri noi</p>
+                    <div id="admin-matches-list"></div>
+                </div>
+
+                <div class="admin-section" id="admin-live-section" style="display: none;">
+                    <h3>⚡ Control Meci Live</h3>
+                    <div id="admin-live-controls"></div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
 
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
+
+<!-- Stiluri suplimentare pentru secțiunea admin -->
+<style>
+.nav-btn-admin {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+    border-color: transparent;
+}
+
+.nav-btn-admin:hover {
+    background: linear-gradient(135deg, #d97706, #b45309);
+}
+
+.nav-btn-admin.active {
+    background: linear-gradient(135deg, #b45309, #92400e);
+}
+
+.admin-section {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.admin-section h3 {
+    color: #1e293b;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.admin-section h4 {
+    color: #334155;
+    margin-bottom: 12px;
+    font-size: 16px;
+}
+
+.admin-match-item {
+    background: #ffffff;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.admin-match-item.pending {
+    border-left: 4px solid #3b82f6;
+}
+
+.admin-match-item.live {
+    border-left: 4px solid #22c55e;
+    background: #f0fdf4;
+}
+
+.admin-match-item.completed {
+    border-left: 4px solid #ef4444;
+    background: #fef2f2;
+}
+
+.admin-match-info {
+    flex: 1;
+}
+
+.admin-match-info h4 {
+    margin: 0 0 4px 0;
+    color: #1f2937;
+}
+
+.admin-match-info p {
+    margin: 0;
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.admin-match-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.admin-live-scoreboard {
+    background: linear-gradient(135deg, #1e293b, #334155);
+    border-radius: 16px;
+    padding: 24px;
+    color: white;
+    margin-bottom: 20px;
+}
+
+.admin-live-teams {
+    display: flex;
+    justify-content: space-around;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.admin-live-team {
+    text-align: center;
+}
+
+.admin-live-team h4 {
+    margin: 0 0 12px 0;
+    font-size: 20px;
+}
+
+.admin-live-score {
+    font-size: 48px;
+    font-weight: bold;
+    margin: 12px 0;
+}
+
+.admin-live-team button {
+    margin-top: 12px;
+}
+
+@media (max-width: 768px) {
+    .admin-match-item {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .admin-match-actions {
+        width: 100%;
+    }
+    
+    .admin-match-actions button {
+        flex: 1;
+    }
+}
+</style>
