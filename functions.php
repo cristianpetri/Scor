@@ -118,6 +118,9 @@ function getTeams() {
 
         $team['ranking_points'] = ($team['wins'] * 2) + $team['losses'];
 
+        $team['set_diff'] = (int)($team['sets_won'] - $team['sets_lost']);
+        $team['point_diff'] = (int)($team['points_won'] - $team['points_lost']);
+
         $team['set_ratio_value'] = $team['sets_lost'] > 0
             ? $team['sets_won'] / $team['sets_lost']
             : ($team['sets_won'] > 0 ? PHP_FLOAT_MAX : 0);
@@ -148,8 +151,8 @@ function getTeams() {
         return ($b['ranking_points'] <=> $a['ranking_points'])
             ?: ($b['set_ratio_value'] <=> $a['set_ratio_value'])
             ?: ($b['point_ratio_value'] <=> $a['point_ratio_value'])
-            ?: (($b['sets_won'] - $b['sets_lost']) <=> ($a['sets_won'] - $a['sets_lost']))
-            ?: (($b['points_won'] - $b['points_lost']) <=> ($a['points_won'] - $a['points_lost']))
+            ?: ($b['set_diff'] <=> $a['set_diff'])
+            ?: ($b['point_diff'] <=> $a['point_diff'])
             ?: strcasecmp($a['name'], $b['name']);
     });
 
