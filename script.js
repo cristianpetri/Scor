@@ -74,8 +74,8 @@ function showAppTitleFeedback(message) {
 function setAuthPanelState(shouldOpen) {
     if (!authPanel || !authToggleButton) return;
     const open = typeof shouldOpen === 'boolean' ? shouldOpen : !authPanel.classList.contains('open');
-    authPanel.hidden = !open;
     authPanel.classList.toggle('open', open);
+    authPanel.setAttribute('aria-hidden', open ? 'false' : 'true');
     authToggleButton.setAttribute('aria-expanded', open ? 'true' : 'false');
     if (open) {
         const usernameInput = authPanel.querySelector('#login-username');

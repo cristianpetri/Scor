@@ -42,7 +42,7 @@ $isAdmin = isAdmin();
                             <span class="auth-toggle-icon" aria-hidden="true">🔐</span>
                             <span class="auth-toggle-text">Autentificare Admin</span>
                         </button>
-                        <div id="auth-panel" class="auth-panel" role="dialog" aria-modal="false" hidden>
+                        <div id="auth-panel" class="auth-panel" role="dialog" aria-modal="false" aria-hidden="true">
                             <form id="login-form" class="auth-form" autocomplete="off">
                                 <div class="auth-form-group">
                                     <label for="login-username">Utilizator</label>
