@@ -2164,3 +2164,44 @@ nav {
         gap: 0.25rem;
     }
 }
+
+@media (max-width: 915px) and (orientation: landscape) {
+    body {
+        padding: 1rem;
+    }
+
+    header {
+        padding: 1.25rem 1.5rem;
+    }
+
+    nav {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+    }
+
+    .standings-table-wrapper {
+        margin: 0;
+        padding: 0;
+    }
+
+    .standings-table table {
+        min-width: 100%;
+    }
+
+    .standings-table thead th,
+    .standings-table tbody td {
+        padding: 0.5rem 0.625rem;
+        font-size: 0.75rem;
+    }
+
+    .rank-badge {
+        width: 36px;
+        height: 36px;
+        font-size: 0.75rem;
+    }
+
+    .points-pill {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+}
