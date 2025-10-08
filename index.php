@@ -332,6 +332,14 @@ $isAdmin = isAdmin();
     margin-top: 12px;
 }
 
+.points-timeline.admin-live-timeline {
+    margin-top: 24px;
+}
+
+.points-timeline.admin-live-timeline h3 {
+    font-size: 1.25rem;
+}
+
 @media (max-width: 768px) {
     .admin-match-item {
         flex-direction: column;

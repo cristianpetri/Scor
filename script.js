@@ -607,6 +607,142 @@ function startMatchAdmin(matchId) {
         });
 }
 
+function buildPointsTimelineSection(match, sets = [], points = [], options = {}) {
+    if (!match) return '';
+
+    const {
+        isCompleted: forcedCompleted,
+        currentSetNumber: forcedCurrentSet,
+        highlightLiveSet = true,
+        emptyMessage = 'Nu există date pentru acest meci.',
+        headingTag = 'h3',
+        additionalClasses = '',
+        showLegend = true
+    } = options;
+
+    const isCompleted = typeof forcedCompleted === 'boolean'
+        ? forcedCompleted
+        : match.status === 'completed';
+    const completedSetsCount = Number(match.sets_team1) + Number(match.sets_team2);
+    const activeSetNumber = typeof forcedCurrentSet === 'number' && Number.isFinite(forcedCurrentSet)
+        ? forcedCurrentSet
+        : (isCompleted ? Math.max(completedSetsCount, 1) : completedSetsCount + 1);
+
+    const setsArray = Array.isArray(sets) ? sets : [];
+    const pointsArray = Array.isArray(points) ? points : [];
+
+    const pointsBySet = pointsArray.reduce((acc, point) => {
+        const setNumber = Number(point.set_number);
+        if (!Number.isFinite(setNumber)) {
+            return acc;
+        }
+        if (!acc[setNumber]) {
+            acc[setNumber] = [];
+        }
+        acc[setNumber].push(point);
+        return acc;
+    }, {});
+
+    const setNumbers = Array.from(new Set([
+        ...setsArray.map(set => Number(set.set_number)),
+        ...Object.keys(pointsBySet).map(Number),
+        !isCompleted ? activeSetNumber : null
+    ].filter(value => Number.isFinite(value) && value > 0))).sort((a, b) => a - b);
+
+    const timelineSetsMarkup = setNumbers.length ? setNumbers.map(setNumber => {
+        const setDetails = setsArray.find(set => Number(set.set_number) === setNumber) || null;
+        const setPoints = (pointsBySet[setNumber] || []).slice().sort((a, b) => Number(a.point_number) - Number(b.point_number));
+        const highlightActive = highlightLiveSet && !isCompleted && setNumber === activeSetNumber;
+        const totalPoints = setPoints.length;
+        const latestIndex = totalPoints - 1;
+        const setStartTime = setPoints[0]?.created_at || '';
+        const setEndTime = totalPoints ? setPoints[totalPoints - 1].created_at : '';
+        const durationInfo = buildDurationInfo(setStartTime, setEndTime, highlightActive && totalPoints > 0);
+        const durationAttrs = durationAttributes(durationInfo);
+        const durationText = `⏱️ ${durationInfo.display}`;
+        const displayScoreTeam1 = Number(setDetails?.score_team1 ?? (setPoints[latestIndex]?.score_team1 ?? 0));
+        const displayScoreTeam2 = Number(setDetails?.score_team2 ?? (setPoints[latestIndex]?.score_team2 ?? 0));
+
+        if (!totalPoints) {
+            return `
+                <div class="set-timeline ${highlightActive ? 'set-timeline-live' : ''}">
+                    <div class="set-timeline-header">
+                        <span class="set-title">Set ${setNumber}</span>
+                        <div class="set-score">${displayScoreTeam1}<span>-</span>${displayScoreTeam2}</div>
+                        <span class="set-duration" ${durationAttrs}>⏱️ --:--</span>
+                    </div>
+                    <p class="timeline-empty">Încă nu s-au marcat puncte în acest set.</p>
+                </div>
+            `;
+        }
+
+        const sequenceBadges = setPoints.map((point, idx) => {
+            const scorerClass = point.scorer === 'team1' ? 'team1' : 'team2';
+            const badgeClasses = ['point-badge', scorerClass];
+            if (highlightActive && idx === latestIndex) {
+                badgeClasses.push('latest');
+            }
+            const displayScoreTeam1Point = Number(point.score_team1 || 0);
+            const displayScoreTeam2Point = Number(point.score_team2 || 0);
+            const scoreLabel = `${displayScoreTeam1Point}-${displayScoreTeam2Point}`;
+            const tooltip = `${match.team1_name} ${displayScoreTeam1Point} - ${match.team2_name} ${displayScoreTeam2Point}`;
+            return `<span class="${badgeClasses.join(' ')}" title="${tooltip}">${scoreLabel}</span>`;
+        }).join('');
+
+        return `
+            <div class="set-timeline ${highlightActive ? 'set-timeline-live' : ''}">
+                <div class="set-timeline-header">
+                    <span class="set-title">Set ${setNumber}</span>
+                    <div class="set-score">${displayScoreTeam1}<span>-</span>${displayScoreTeam2}</div>
+                    <span class="set-duration" ${durationAttrs}>${durationText}</span>
+                </div>
+                <div class="timeline-team-info">
+                    <span class="team-label"><span class="team-dot team1"></span>${match.team1_name}</span>
+                    <span class="team-label"><span class="team-dot team2"></span>${match.team2_name}</span>
+                </div>
+                <div class="timeline-sequence">${sequenceBadges}</div>
+            </div>
+        `;
+    }).join('') : '';
+
+    const legendMarkup = showLegend && timelineSetsMarkup
+        ? `
+            <div class="timeline-legend" aria-label="Legendă culori echipe">
+                <span class="legend-item"><span class="legend-dot team1"></span>${match.team1_name}</span>
+                <span class="legend-item"><span class="legend-dot team2"></span>${match.team2_name}</span>
+            </div>
+        `
+        : '';
+
+    const content = timelineSetsMarkup
+        ? `
+            <div class="points-timeline-content">
+                ${legendMarkup}
+                <div class="timeline-sets">${timelineSetsMarkup}</div>
+            </div>
+        `
+        : `<p class="timeline-empty">${emptyMessage}</p>`;
+
+    const heading = typeof headingTag === 'string' && /^h[1-6]$/i.test(headingTag)
+        ? headingTag.toLowerCase()
+        : 'h3';
+
+    const wrapperClasses = ['points-timeline'];
+    if (!isCompleted && highlightLiveSet) {
+        wrapperClasses.push('live');
+    }
+    if (additionalClasses) {
+        wrapperClasses.push(additionalClasses);
+    }
+
+    return `
+        <div class="${wrapperClasses.join(' ')}">
+            <${heading}>Istoric puncte detaliat</${heading}>
+            ${content}
+        </div>
+    `;
+}
+
 function controlLiveMatch(matchId) {
     if (!ensureAdminClient()) return;
     currentMatchId = matchId;
@@ -624,17 +760,29 @@ function controlLiveMatch(matchId) {
             const match = data.match;
             const sets = data.sets || [];
             const points = data.points || [];
+            const isCompletedMatch = match.status === 'completed';
             const completedSetsCount = Number(match.sets_team1) + Number(match.sets_team2);
-            const currentSetNumber = completedSetsCount + 1;
+            const currentSetNumber = isCompletedMatch
+                ? Math.max(completedSetsCount, 1)
+                : completedSetsCount + 1;
             const currentSetData = sets.find(set => Number(set.set_number) === currentSetNumber) || {
                 score_team1: 0, score_team2: 0
             };
             const currentPointsTeam1 = Number(currentSetData.score_team1) || 0;
             const currentPointsTeam2 = Number(currentSetData.score_team2) || 0;
+            const timelineSection = buildPointsTimelineSection(match, sets, points, {
+                isCompleted: isCompletedMatch,
+                currentSetNumber,
+                additionalClasses: 'admin-live-timeline',
+                emptyMessage: 'Nu există puncte înregistrate pentru acest meci.'
+            });
+            const statusLine = isCompletedMatch
+                ? `Meci finalizat · Seturi: ${match.sets_team1}-${match.sets_team2}`
+                : `Set curent: ${currentSetNumber} | Seturi: ${match.sets_team1}-${match.sets_team2}`;
             liveControls.innerHTML = `
                 <div class="admin-live-scoreboard">
                     <h4 style="text-align: center; margin-bottom: 20px;">${match.team1_name} vs ${match.team2_name}</h4>
-                    <p style="text-align: center; margin-bottom: 20px;">Set curent: ${currentSetNumber} | Seturi: ${match.sets_team1}-${match.sets_team2}</p>
+                    <p style="text-align: center; margin-bottom: 20px;">${statusLine}</p>
                     <div class="admin-live-teams">
                         <div class="admin-live-team">
                             <h4>${match.team1_name}</h4>
@@ -653,10 +801,12 @@ function controlLiveMatch(matchId) {
                         </div>
                     ` : ''}
                 </div>
+                ${timelineSection}
                 <div style="text-align: center; margin-top: 16px;">
                     <button class="btn btn-secondary" onclick="viewMatchStats(${matchId})">📊 Vezi detalii complete</button>
                 </div>
             `;
+            scheduleLiveTimers(isCompletedMatch);
             liveSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         });
 }
@@ -723,11 +873,6 @@ function renderLiveMatch(data) {
     const pointsLabel = isCompleted ? 'Puncte în ultimul set' : `Puncte în setul ${currentSetNumber}`;
     const team1WinnerTag = team1Winner ? '<span class="winner-tag">Câștigător</span>' : '';
     const team2WinnerTag = team2Winner ? '<span class="winner-tag">Câștigător</span>' : '';
-    const pointsBySet = (points || []).reduce((acc, point) => {
-        if (!acc[point.set_number]) acc[point.set_number] = [];
-        acc[point.set_number].push(point);
-        return acc;
-    }, {});
     const matchDurationInfo = buildDurationInfo(
         points[0]?.created_at || '',
         points.length ? points[points.length - 1].created_at : '',
@@ -737,74 +882,11 @@ function renderLiveMatch(data) {
     const matchDurationText = `⏱️ ${matchDurationInfo.display}`;
     const secondaryMetaLabel = isCompleted ? 'Seturi jucate' : 'Set curent';
     const secondaryMetaValue = isCompleted ? completedSetsCount : currentSetNumber;
-    const setNumbers = Array.from(new Set([
-        ...sortedSets.map(set => Number(set.set_number)),
-        ...Object.keys(pointsBySet).map(Number),
-        !isCompleted ? currentSetNumber : null
-    ].filter(Boolean))).sort((a, b) => a - b);
-    const timelineSetsMarkup = setNumbers.length ? setNumbers.map(setNumber => {
-        const setDetails = sortedSets.find(set => Number(set.set_number) === setNumber) || null;
-        const setPoints = (pointsBySet[setNumber] || []).slice().sort((a, b) => Number(a.point_number) - Number(b.point_number));
-        const highlightActive = !isCompleted && setNumber === currentSetNumber;
-        const totalColumns = setPoints.length;
-        const latestIndex = totalColumns - 1;
-        const setStartTime = setPoints[0]?.created_at || '';
-        const setEndTime = totalColumns ? setPoints[totalColumns - 1].created_at : '';
-        const durationInfo = buildDurationInfo(setStartTime, setEndTime, highlightActive && totalColumns > 0);
-        const durationAttrs = durationAttributes(durationInfo);
-        const durationText = `⏱️ ${durationInfo.display}`;
-        const displayScoreTeam1 = Number(setDetails?.score_team1 ?? (setPoints[totalColumns - 1]?.score_team1 ?? 0));
-        const displayScoreTeam2 = Number(setDetails?.score_team2 ?? (setPoints[totalColumns - 1]?.score_team2 ?? 0));
-        if (!totalColumns) {
-            return `
-                <div class="set-timeline ${highlightActive ? 'set-timeline-live' : ''}">
-                    <div class="set-timeline-header">
-                        <span class="set-title">Set ${setNumber}</span>
-                        <div class="set-score">${displayScoreTeam1}<span>-</span>${displayScoreTeam2}</div>
-                        <span class="set-duration" ${durationAttrs}>⏱️ --:--</span>
-                    </div>
-                    <p class="timeline-empty">Încă nu s-au marcat puncte în acest set.</p>
-                </div>
-            `;
-        }
-        const sequenceBadges = setPoints.map((point, idx) => {
-            const scorerClass = point.scorer === 'team1' ? 'team1' : 'team2';
-            const badgeClasses = ['point-badge', scorerClass];
-            if (highlightActive && idx === latestIndex) {
-                badgeClasses.push('latest');
-            }
-            const displayScoreTeam1 = Number(point.score_team1 || 0);
-            const displayScoreTeam2 = Number(point.score_team2 || 0);
-            const scoreLabel = `${displayScoreTeam1}-${displayScoreTeam2}`;
-            const tooltip = `${match.team1_name} ${displayScoreTeam1} - ${match.team2_name} ${displayScoreTeam2}`;
-            return `<span class="${badgeClasses.join(' ')}" title="${tooltip}">${scoreLabel}</span>`;
-        }).join('');
-        return `
-            <div class="set-timeline ${highlightActive ? 'set-timeline-live' : ''}">
-                <div class="set-timeline-header">
-                    <span class="set-title">Set ${setNumber}</span>
-                    <div class="set-score">${displayScoreTeam1}<span>-</span>${displayScoreTeam2}</div>
-                    <span class="set-duration" ${durationAttrs}>${durationText}</span>
-                </div>
-                <div class="timeline-team-info">
-                    <span class="team-label"><span class="team-dot team1"></span>${match.team1_name}</span>
-                    <span class="team-label"><span class="team-dot team2"></span>${match.team2_name}</span>
-                </div>
-                <div class="timeline-sequence">${sequenceBadges}</div>
-            </div>
-        `;
-    }).join('') : '';
-    const timelineMarkup = timelineSetsMarkup
-        ? `
-            <div class="points-timeline-content">
-                <div class="timeline-legend" aria-label="Legendă culori echipe">
-                    <span class="legend-item"><span class="legend-dot team1"></span>${match.team1_name}</span>
-                    <span class="legend-item"><span class="legend-dot team2"></span>${match.team2_name}</span>
-                </div>
-                <div class="timeline-sets">${timelineSetsMarkup}</div>
-            </div>
-        `
-        : '<p class="timeline-empty">Nu există date pentru acest meci.</p>';
+    const timelineSection = buildPointsTimelineSection(match, sets, points, {
+        isCompleted,
+        currentSetNumber,
+        emptyMessage: 'Nu există date pentru acest meci.'
+    });
     const scoreboard = `
         <div class="scoreboard">
             <div class="scoreboard-header">
@@ -869,10 +951,7 @@ function renderLiveMatch(data) {
                 </tbody>
             </table>
         </div>
-        <div class="points-timeline ${isCompleted ? '' : 'live'}">
-            <h3>Istoric puncte detaliat</h3>
-            ${timelineMarkup}
-        </div>
+        ${timelineSection}
     `;
     scheduleLiveTimers(isCompleted);
 }
