@@ -1038,25 +1038,25 @@ function loadStandings() {
                                 const formatDiff = value => value > 0 ? `+${value}` : value === 0 ? '0' : `${value}`;
                                 return `
                                     <tr class="standings-row ${medalClass}">
-                                        <td class="standings-rank"><span class="rank-badge">#${rank}</span></td>
-                                        <td class="standings-team"><span class="team-name">${team.name}</span></td>
-                                        <td class="standings-points"><span class="points-pill">${team.ranking_points} pct</span></td>
-                                        <td>${team.wins}</td>
-                                        <td>${team.losses}</td>
-                                        <td>
+                                        <td class="standings-rank" data-label="Loc"><span class="rank-badge">#${rank}</span></td>
+                                        <td class="standings-team" data-label="Echipă"><span class="team-name">${team.name}</span></td>
+                                        <td class="standings-points" data-label="Puncte clasament"><span class="points-pill">${team.ranking_points} pct</span></td>
+                                        <td data-label="Victorii">${team.wins}</td>
+                                        <td data-label="Înfrângeri">${team.losses}</td>
+                                        <td data-label="Seturi (+/-)">
                                             <div class="stat-line">
                                                 <span class="stat-line-main">${team.sets_won}-${team.sets_lost}</span>
                                                 <span class="stat-line-diff ${setsDiff > 0 ? 'positive' : setsDiff < 0 ? 'negative' : ''}">${formatDiff(setsDiff)}</span>
                                             </div>
                                         </td>
-                                        <td>${team.set_ratio_display}</td>
-                                        <td>
+                                        <td data-label="Raport seturi">${team.set_ratio_display}</td>
+                                        <td data-label="Puncte (+/-)">
                                             <div class="stat-line">
                                                 <span class="stat-line-main">${team.points_won}-${team.points_lost}</span>
                                                 <span class="stat-line-diff ${pointsDiff > 0 ? 'positive' : pointsDiff < 0 ? 'negative' : ''}">${formatDiff(pointsDiff)}</span>
                                             </div>
                                         </td>
-                                        <td>${team.point_ratio_display}</td>
+                                        <td data-label="Raport puncte">${team.point_ratio_display}</td>
                                     </tr>
                                 `;
                             }).join('')}
