@@ -392,7 +392,7 @@ nav {
     margin-top: 1.5rem;
     display: flex;
     gap: 1rem;
-    justify-content: flex-end;
+    justify-content: flex-start;
     align-items: center;
 }
 
@@ -426,7 +426,7 @@ nav {
 .auth-panel {
     position: absolute;
     top: calc(100% + 0.75rem);
-    right: 0;
+    left: 0;
     width: 320px;
     padding: 1.5rem;
     background: white;
