@@ -1590,12 +1590,16 @@ nav {
     overflow: hidden;
     box-shadow: var(--shadow-lg);
     border: 1px solid var(--gray-200);
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
 }
 
 .standings-table table {
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
+    min-width: 720px;
 }
 
 .standings-table thead th {
@@ -2125,77 +2129,33 @@ nav {
     }
 
     .standings-table-wrapper {
-        overflow: visible;
+        margin: 0 -1rem;
+        padding: 0 1rem;
     }
 
-    .standings-table table,
-    .standings-table tbody,
-    .standings-table tr,
-    .standings-table td {
-        display: block;
-        width: 100%;
+    .standings-table table {
+        min-width: 680px;
     }
 
-    .standings-table thead {
-        display: none;
-    }
-
-    .standings-table tbody tr {
-        margin-bottom: 1.25rem;
-        padding: 1.125rem 1.25rem;
-        border: 1px solid var(--gray-200);
-        border-radius: var(--radius-xl);
-        box-shadow: var(--shadow-sm);
-        background: white;
-    }
-
-    .standings-gold,
-    .standings-silver,
-    .standings-bronze {
-        border-left-width: 0;
-    }
-
-    .standings-row {
-        transform: none !important;
+    .standings-table thead th {
+        padding: 0.75rem;
+        font-size: 0.75rem;
     }
 
     .standings-table tbody td {
-        padding: 0.5rem 0;
-        border-bottom: none;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
-    }
-
-    .standings-table tbody td::before {
-        content: attr(data-label);
-        font-weight: 600;
-        text-transform: uppercase;
-        color: var(--gray-600);
-        font-size: 0.75rem;
-        letter-spacing: 0.04em;
-    }
-
-    .standings-table tbody td:last-child {
-        border-bottom: none;
-    }
-
-    .standings-rank,
-    .standings-team,
-    .standings-points {
-        width: 100%;
+        padding: 0.75rem;
+        font-size: 0.8125rem;
     }
 
     .rank-badge {
         width: 40px;
         height: 40px;
-        font-size: 1rem;
-        margin-left: auto;
+        font-size: 0.875rem;
     }
 
     .points-pill {
-        margin-left: auto;
+        font-size: 0.875rem;
+        padding: 0.375rem 0.75rem;
     }
 
     .stat-line {
