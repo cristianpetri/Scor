@@ -10,7 +10,8 @@ $adminActions = [
     'update_match_order',
     'start_match',
     'add_point',
-    'remove_last_point'
+    'remove_last_point',
+    'change_password'
 ];
 
 if (in_array($action, $adminActions, true) && !isAdmin()) {
@@ -40,6 +41,38 @@ switch($action) {
     case 'logout':
         logoutUser();
         jsonResponse(['success' => true]);
+        break;
+
+    case 'change_password':
+        $currentPassword = $_POST['current_password'] ?? '';
+        $newPassword = $_POST['new_password'] ?? '';
+        $confirmPassword = $_POST['confirm_password'] ?? '';
+
+        if ($currentPassword === '' || $newPassword === '' || $confirmPassword === '') {
+            jsonResponse([
+                'success' => false,
+                'message' => 'Completează toate câmpurile.'
+            ]);
+        }
+
+        if ($newPassword !== $confirmPassword) {
+            jsonResponse([
+                'success' => false,
+                'message' => 'Parola nouă și confirmarea nu coincid.'
+            ]);
+        }
+
+        $currentUser = getCurrentUser();
+        if (!$currentUser) {
+            jsonResponse([
+                'success' => false,
+                'message' => 'Autentificare necesară.',
+                'error' => 'unauthorized'
+            ]);
+        }
+
+        $result = changeUserPassword((int)$currentUser['id'], $currentPassword, $newPassword);
+        jsonResponse($result);
         break;
 
     case 'get_current_user':

@@ -126,6 +126,17 @@ function showLoginFeedback(message, type = 'error') {
     }
 }
 
+function showPasswordChangeFeedback(message, type = 'error') {
+    const feedback = document.getElementById('password-change-feedback');
+    if (!feedback) return;
+    feedback.textContent = message;
+    feedback.classList.remove('auth-feedback-error', 'auth-feedback-success', 'visible');
+    if (message) {
+        const className = type === 'success' ? 'auth-feedback-success' : 'auth-feedback-error';
+        feedback.classList.add(className, 'visible');
+    }
+}
+
 function handleLoginSubmit(event) {
     event.preventDefault();
     const form = event.target;
@@ -167,6 +178,59 @@ function handleLogout(event) {
             alert(data.message || 'Nu am putut realiza deconectarea.');
         })
         .catch(() => alert('Nu am putut realiza deconectarea.'));
+}
+
+function handlePasswordChangeSubmit(event) {
+    event.preventDefault();
+    if (!ensureAdminClient()) return;
+
+    const form = event.target;
+    const formData = new FormData(form);
+    const currentPassword = (formData.get('current_password') || '').toString();
+    const newPassword = (formData.get('new_password') || '').toString();
+    const confirmPassword = (formData.get('confirm_password') || '').toString();
+    const submitButton = form.querySelector('button[type="submit"]');
+
+    if (submitButton) submitButton.disabled = true;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+        showPasswordChangeFeedback('Completează toate câmpurile.');
+        if (submitButton) submitButton.disabled = false;
+        return;
+    }
+
+    if (newPassword.length < 8) {
+        showPasswordChangeFeedback('Parola nouă trebuie să aibă cel puțin 8 caractere.');
+        if (submitButton) submitButton.disabled = false;
+        return;
+    }
+
+    if (newPassword !== confirmPassword) {
+        showPasswordChangeFeedback('Confirmarea parolei nu corespunde.');
+        if (submitButton) submitButton.disabled = false;
+        return;
+    }
+
+    formData.append('action', 'change_password');
+    showPasswordChangeFeedback('Se actualizează parola...', 'success');
+
+    fetch('ajax.php', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            if (handleUnauthorizedResponse(data)) return;
+            if (data.success) {
+                showPasswordChangeFeedback(data.message || 'Parola a fost actualizată.', 'success');
+                form.reset();
+                return;
+            }
+            showPasswordChangeFeedback(data.message || 'Nu am putut actualiza parola.');
+        })
+        .catch(() => {
+            showPasswordChangeFeedback('Nu am putut actualiza parola.');
+        })
+        .finally(() => {
+            if (submitButton) submitButton.disabled = false;
+        });
 }
 
 // Timere
@@ -265,6 +329,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutButton = document.getElementById('logout-button');
     if (logoutButton) {
         logoutButton.addEventListener('click', handleLogout);
+    }
+
+    const passwordForm = document.getElementById('password-change-form');
+    if (passwordForm) {
+        passwordForm.addEventListener('submit', handlePasswordChangeSubmit);
     }
 
     // Încarcă datele inițiale
