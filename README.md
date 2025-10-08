@@ -134,6 +134,27 @@ WHERE username = 'admin';
 
 ## 🎮 Ghid de Utilizare
 
+## 📈 Calculul Clasamentului
+
+Clasamentul echipelor este stabilit în funcție de punctele acumulate, raportul seturilor și raportul punctelor. Criteriile sunt aplicate în ordine, după cum urmează:
+
+1. **Punctajul echipelor**
+   - Victorie: 2 puncte
+   - Înfrângere: 1 punct (pentru participare)
+   - Exemplu: o echipă cu 2 victorii și 1 înfrângere acumulează `2×2 + 1×1 = 5` puncte.
+2. **Raportul seturilor**
+   - În fazele locală, județeană și regională se joacă cel mai bun din 3 seturi.
+   - Raportul se calculează ca `seturi câștigate ÷ seturi pierdute`.
+   - Exemplu: Echipa A cu 4 seturi câștigate și 2 pierdute are raport `4÷2 = 2.00`, în timp ce Echipa B cu 4 seturi câștigate și 3 pierdute are raport `4÷3 = 1.33`.
+3. **Raportul punctelor**
+   - Se aplică atunci când echipele au același punctaj și același raport de seturi.
+   - Raportul se calculează ca `puncte câștigate ÷ puncte pierdute`.
+   - Exemplu: Echipa A cu 139 puncte câștigate și 124 pierdute are raport `139÷124 = 1.12`, iar Echipa B cu 129 puncte câștigate și 132 pierdute are raport `129÷132 = 0.98`.
+4. **Criterii suplimentare de departajare**
+   - Dacă toate valorile de mai sus sunt egale, se folosește diferența totală de seturi (`seturi câștigate - seturi pierdute`).
+   - Dacă egalitatea persistă, se aplică diferența totală de puncte (`puncte câștigate - puncte pierdute`).
+   - În ultimă instanță se poate utiliza ordinea alfabetică a numelor de echipe.
+
 ### Pentru Vizitatori
 
 1. **Vizualizare Meciuri**: Click pe tab-ul "📋 Meciuri"
@@ -184,17 +205,6 @@ WHERE username = 'admin';
     --team2-color-strong: #f87171;
 }
 ```
-
-## 📊 Calcul Clasament
-
-Clasamentul se calculează conform următoarelor criterii (în ordine):
-
-1. **Puncte Clasament**: Victorie = 2 puncte, Înfrângere = 1 punct
-2. **Raport Seturi**: Seturi câștigate ÷ Seturi pierdute
-3. **Raport Puncte**: Puncte câștigate ÷ Puncte pierdute
-4. **Diferență Seturi**: Seturi câștigate - Seturi pierdute
-5. **Diferență Puncte**: Puncte câștigate - Puncte pierdute
-6. **Ordine Alfabetică**: Nume echipă (A-Z)
 
 ## 🔄 Structură Modificată
 
