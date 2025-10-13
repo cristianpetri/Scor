@@ -6,6 +6,11 @@ let currentView = 'matches';
 let liveTimerInterval = null;
 let lastStandings = [];
 let lastStatsData = { teams: [], matches: [] };
+let matchesCache = [];
+let liveMatchAutoRefreshInterval = null;
+const LIVE_MATCH_REFRESH_INTERVAL_MS = 3000;
+let pendingLiveMatchId = null;
+let manualLiveSelectionActive = false;
 let authPanel = null;
 let authToggleButton = null;
 let authDropdownInitialized = false;
@@ -111,6 +116,87 @@ function formatDifference(value) {
     if (value > 0) return `+${value}`;
     if (value === 0) return '0';
     return `${value}`;
+}
+
+function normalizeMatchId(value) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function updateCurrentMatchId(value) {
+    const normalized = normalizeMatchId(value);
+    currentMatchId = normalized;
+    return normalized;
+}
+
+function updateMatchesCacheWithMatch(matchDetails) {
+    if (!matchDetails) return;
+    const matchId = normalizeMatchId(matchDetails.id);
+    if (matchId === null) return;
+    let updated = false;
+    matchesCache = Array.isArray(matchesCache) ? matchesCache.map(match => {
+        if (normalizeMatchId(match.id) === matchId) {
+            updated = true;
+            return { ...match, ...matchDetails };
+        }
+        return match;
+    }) : [];
+    if (!updated) {
+        matchesCache.push({ ...matchDetails });
+    }
+}
+
+function autoSelectLiveMatch() {
+    if (!Array.isArray(matchesCache) || !matchesCache.length) return false;
+    const liveMatch = matchesCache.find(match => String(match.status).toLowerCase() === 'live');
+    if (!liveMatch) return false;
+    const liveMatchId = normalizeMatchId(liveMatch.id);
+    if (liveMatchId === null) return false;
+    const currentMatch = matchesCache.find(match => normalizeMatchId(match.id) === currentMatchId) || null;
+    const currentIsLive = currentMatch && String(currentMatch.status).toLowerCase() === 'live';
+    if (!currentIsLive || currentMatchId !== liveMatchId) {
+        currentMatchId = liveMatchId;
+        return true;
+    }
+    return false;
+}
+
+function stopLiveAutoRefresh() {
+    if (liveMatchAutoRefreshInterval) {
+        clearInterval(liveMatchAutoRefreshInterval);
+        liveMatchAutoRefreshInterval = null;
+    }
+}
+
+function startLiveAutoRefresh() {
+    if (liveMatchAutoRefreshInterval || !currentMatchId || currentView !== 'live') {
+        return;
+    }
+    liveMatchAutoRefreshInterval = setInterval(() => {
+        if (currentView !== 'live' || !currentMatchId) {
+            return;
+        }
+        loadLiveMatch();
+    }, LIVE_MATCH_REFRESH_INTERVAL_MS);
+}
+
+function restartLiveAutoRefresh() {
+    stopLiveAutoRefresh();
+    if (!currentMatchId) return;
+    startLiveAutoRefresh();
+}
+
+function refreshMatchesCacheSilently() {
+    return fetch('ajax.php?action=get_matches')
+        .then(r => r.json())
+        .then(data => {
+            matchesCache = Array.isArray(data.matches) ? data.matches : [];
+            return matchesCache;
+        })
+        .catch(() => {
+            matchesCache = [];
+            return matchesCache;
+        });
 }
 
 // Funcții pentru titlu aplicație
@@ -475,11 +561,28 @@ function switchView(view) {
     if (targetView) {
         targetView.classList.add('active');
     }
-    if (view !== 'live') stopLiveTimers();
+    if (view !== 'live') {
+        stopLiveTimers();
+        stopLiveAutoRefresh();
+        manualLiveSelectionActive = false;
+    }
     if (view === 'matches') loadMatches();
     if (view === 'standings') loadStandings();
     if (view === 'stats') loadStats();
-    if (view === 'live') loadLiveMatch();
+    if (view === 'live') {
+        if (pendingLiveMatchId !== null) {
+            const normalized = updateCurrentMatchId(pendingLiveMatchId);
+            manualLiveSelectionActive = normalized !== null;
+            pendingLiveMatchId = null;
+        } else if (!manualLiveSelectionActive) {
+            const selected = autoSelectLiveMatch();
+            if (!selected && (!Array.isArray(matchesCache) || matchesCache.length === 0)) {
+                loadMatches();
+            }
+        }
+        loadLiveMatch();
+        restartLiveAutoRefresh();
+    }
     if (view === 'admin' && isAdminUser) {
         loadTeams();
         loadAdminMatches();
@@ -596,12 +699,13 @@ function generateMatches() {
 
 // Meciuri
 function loadMatches() {
-    fetch('ajax.php?action=get_matches')
+    return fetch('ajax.php?action=get_matches')
         .then(r => r.json())
         .then(data => {
             const container = document.getElementById('matches-list');
             if (!container) return;
             const matches = Array.isArray(data.matches) ? data.matches : [];
+            matchesCache = matches;
             if (matches.length === 0) {
                 container.innerHTML = '<p class="text-center">Nu există meciuri generate.</p>';
                 return;
@@ -633,6 +737,16 @@ function loadMatches() {
                 </div>
                 `;
             }).join('');
+            if (currentView === 'live' && !manualLiveSelectionActive) {
+                const changed = autoSelectLiveMatch();
+                if (changed) {
+                    loadLiveMatch();
+                    restartLiveAutoRefresh();
+                }
+            }
+        })
+        .catch(() => {
+            matchesCache = [];
         });
 }
 
@@ -698,9 +812,14 @@ function moveMatch(matchId, newOrder) {
 
 function startMatchAdmin(matchId) {
     if (!ensureAdminClient()) return;
+    const normalizedId = updateCurrentMatchId(matchId);
     const formData = new FormData();
     formData.append('action', 'start_match');
-    formData.append('match_id', matchId);
+    if (normalizedId !== null) {
+        formData.append('match_id', normalizedId);
+    } else {
+        formData.append('match_id', matchId);
+    }
     fetch('ajax.php', { method: 'POST', body: formData })
         .then(r => r.json())
         .then(data => {
@@ -709,10 +828,11 @@ function startMatchAdmin(matchId) {
                 alert(data.message || 'Nu am putut porni meciul.');
                 return;
             }
-            currentMatchId = matchId;
             loadAdminMatches();
             loadMatches();
-            controlLiveMatch(matchId);
+            if (normalizedId !== null) {
+                controlLiveMatch(normalizedId);
+            }
         });
 }
 
@@ -854,8 +974,9 @@ function buildPointsTimelineSection(match, sets = [], points = [], options = {})
 
 function controlLiveMatch(matchId) {
     if (!ensureAdminClient()) return;
-    currentMatchId = matchId;
-    fetch(`ajax.php?action=get_match_details&match_id=${matchId}`)
+    const normalizedId = updateCurrentMatchId(matchId);
+    if (normalizedId === null) return;
+    fetch(`ajax.php?action=get_match_details&match_id=${normalizedId}`)
         .then(r => r.json())
         .then(data => {
             if (!data.match) {
@@ -912,7 +1033,7 @@ function controlLiveMatch(matchId) {
                 </div>
                 ${timelineSection}
                 <div style="text-align: center; margin-top: 16px;">
-                    <button class="btn btn-secondary" onclick="viewMatchStats(${matchId})">📊 Vezi detalii complete</button>
+                    <button class="btn btn-secondary" onclick="viewMatchStats(${normalizedId})">📊 Vezi detalii complete</button>
                 </div>
             `;
             scheduleLiveTimers(isCompletedMatch);
@@ -921,7 +1042,10 @@ function controlLiveMatch(matchId) {
 }
 
 function viewMatchStats(matchId) {
-    currentMatchId = matchId;
+    const normalized = updateCurrentMatchId(matchId);
+    if (normalized === null) return;
+    pendingLiveMatchId = normalized;
+    manualLiveSelectionActive = true;
     switchView('live');
 }
 
@@ -930,6 +1054,7 @@ function loadLiveMatch() {
     if (!container) return;
     if (!currentMatchId) {
         stopLiveTimers();
+        stopLiveAutoRefresh();
         container.innerHTML = '<p class="text-center">Selectează un meci din lista de meciuri pentru a urmări</p>';
         return;
     }
@@ -938,6 +1063,7 @@ function loadLiveMatch() {
         .then(data => {
             if (!data.match) {
                 stopLiveTimers();
+                stopLiveAutoRefresh();
                 container.innerHTML = '<p class="text-center">Meciul nu a fost găsit.</p>';
                 return;
             }
@@ -959,6 +1085,7 @@ function renderLiveMatch(data) {
     const { match, sets = [], points = [] } = data;
     const container = document.getElementById('live-match-container');
     if (!container) return;
+    updateMatchesCacheWithMatch(match);
     const isCompleted = match.status === 'completed';
     const completedSetsCount = Number(match.sets_team1) + Number(match.sets_team2);
     const currentSetNumber = isCompleted ? Math.max(completedSetsCount, 1) : completedSetsCount + 1;
@@ -1075,6 +1202,21 @@ function renderLiveMatch(data) {
         ${timelineSection}
     `;
     scheduleLiveTimers(isCompleted);
+    if (isCompleted) {
+        stopLiveAutoRefresh();
+        if (!manualLiveSelectionActive) {
+            refreshMatchesCacheSilently().then(() => {
+                if (currentView !== 'live') return;
+                const changed = autoSelectLiveMatch();
+                if (changed) {
+                    loadLiveMatch();
+                    restartLiveAutoRefresh();
+                }
+            });
+        }
+    } else {
+        startLiveAutoRefresh();
+    }
 }
 
 function addPointLive(teamKey) {
