@@ -59,6 +59,17 @@ $isAdmin = isAdmin();
                     <button class="nav-btn nav-btn-admin" data-view="admin">⚙️ Administrare</button>
                 <?php endif; ?>
             </nav>
+            <div class="mobile-quick-actions" aria-label="Navigare rapidă">
+                <button type="button" class="mobile-quick-action" data-view="live">
+                    ⚡ Meci Live
+                </button>
+                <button type="button" class="mobile-quick-action" data-view="standings">
+                    🏆 Clasament
+                </button>
+                <button type="button" class="mobile-quick-action" data-view="stats">
+                    📊 Statistici
+                </button>
+            </div>
         </header>
 
         <!-- VIEW: MATCHES (Public) -->

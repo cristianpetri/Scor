@@ -451,6 +451,12 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     });
 });
 
+document.querySelectorAll('.mobile-quick-action').forEach(btn => {
+    btn.addEventListener('click', function() {
+        switchView(this.dataset.view);
+    });
+});
+
 function switchView(view) {
     currentView = view;
     document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -458,6 +464,9 @@ function switchView(view) {
         if (btn.dataset.view === view) {
             btn.classList.add('active');
         }
+    });
+    document.querySelectorAll('.mobile-quick-action').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.view === view);
     });
     document.querySelectorAll('.view').forEach(v => {
         v.classList.remove('active');

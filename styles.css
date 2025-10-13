@@ -195,6 +195,45 @@ nav {
     border-bottom: 3px solid transparent;
 }
 
+.mobile-quick-actions {
+    display: none;
+}
+
+.mobile-quick-action {
+    border: none;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-xl);
+    font-weight: 600;
+    font-size: 0.9375rem;
+    background: white;
+    color: var(--gray-700);
+    box-shadow: var(--shadow-md);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mobile-quick-action:hover,
+.mobile-quick-action:focus {
+    background: var(--primary-50);
+    color: var(--primary-700);
+    transform: translateY(-1px);
+}
+
+.mobile-quick-action:focus-visible {
+    outline: 2px solid var(--primary-500);
+    outline-offset: 2px;
+}
+
+.mobile-quick-action.active {
+    background: linear-gradient(135deg, var(--primary-600), var(--primary-500));
+    color: white;
+    box-shadow: var(--shadow-lg);
+}
+
 .nav-btn::before {
     content: '';
     position: absolute;
@@ -2056,6 +2095,18 @@ nav {
 
     header {
         padding: 1.5rem 1.25rem;
+    }
+
+    .mobile-quick-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 0.75rem;
+        margin-top: 1rem;
+    }
+
+    .mobile-quick-action {
+        font-size: 0.875rem;
+        padding: 0.75rem;
     }
 
     .auth-bar {
