@@ -55,6 +55,7 @@ $isAdmin = isAdmin();
                 <button class="nav-btn" data-view="live">⚡ Meci Live</button>
                 <button class="nav-btn" data-view="standings">🏆 Clasament</button>
                 <button class="nav-btn" data-view="stats">📊 Statistici</button>
+                <button class="nav-btn" data-view="regulations">📖 Regulament</button>
                 <?php if ($isAdmin): ?>
                     <button class="nav-btn nav-btn-admin" data-view="admin">⚙️ Administrare</button>
                 <?php endif; ?>
@@ -68,6 +69,9 @@ $isAdmin = isAdmin();
                 </button>
                 <button type="button" class="mobile-quick-action" data-view="stats">
                     📊 Statistici
+                </button>
+                <button type="button" class="mobile-quick-action" data-view="regulations">
+                    📖 Regulament
                 </button>
             </div>
         </header>
@@ -131,6 +135,56 @@ $isAdmin = isAdmin();
                 <div id="stats-teams" class="team-stats-section"></div>
                 <h3>Istoric Meciuri Complete</h3>
                 <div id="stats-matches"></div>
+            </div>
+        </div>
+
+        <!-- VIEW: REGULATIONS (Public) -->
+        <div id="view-regulations" class="view">
+            <div class="card regulation-card">
+                <h2>📖 Regulament Campionat</h2>
+                <p class="info">ℹ️ Regulile oficiale ale campionatului, disponibile pentru toți participanții și spectatorii.</p>
+
+                <section class="regulation-section">
+                    <h3>1. Formatul competiției</h3>
+                    <ul class="regulation-list">
+                        <li><strong>Structură</strong>: Campionatul se desfășoară în sistem fiecare cu fiecare, urmat de faze eliminatorii dacă este cazul.</li>
+                        <li><strong>Durata meciurilor</strong>: Se joacă în sistem "cel mai bun din 3 seturi" în faza grupelor și "cel mai bun din 5 seturi" în semifinale și finală.</li>
+                        <li><strong>Punctaj clasament</strong>: Victorie = 2 puncte, înfrângere = 1 punct pentru participare, neprezentare = 0 puncte.</li>
+                    </ul>
+                </section>
+
+                <section class="regulation-section">
+                    <h3>2. Reguli de joc</h3>
+                    <ul class="regulation-list">
+                        <li><strong>Componență echipă</strong>: Fiecare echipă înscrisă trebuie să aibă minimum 6 jucători eligibili și maximum 12 pe foaia de joc.</li>
+                        <li><strong>Echipament</strong>: Tricouri numerotate, în culori distincte față de adversar; libero-ul poartă tricou de culoare contrastantă.</li>
+                        <li><strong>Pauze și time-out</strong>: Două time-out-uri tehnice pe set, fiecare cu durata de 30 de secunde.</li>
+                        <li><strong>Schimbări</strong>: Maximum 6 schimbări de jucători pe set, conform regulamentului Federației Române de Volei.</li>
+                    </ul>
+                </section>
+
+                <section class="regulation-section">
+                    <h3>3. Conduită și fair-play</h3>
+                    <ul class="regulation-list">
+                        <li><strong>Respect</strong>: Jucătorii, staff-ul și spectatorii trebuie să respecte arbitrii, adversarii și voluntarii.</li>
+                        <li><strong>Penalizări</strong>: Cartonaș galben = avertisment, cartonaș roșu = punct pentru adversar; comportamentul nesportiv repetat poate duce la eliminare.</li>
+                        <li><strong>Siguranță</strong>: Este interzisă intrarea pe teren fără acordul arbitrilor; orice accident trebuie raportat imediat organizatorilor.</li>
+                    </ul>
+                </section>
+
+                <section class="regulation-section">
+                    <h3>4. Proceduri organizatorice</h3>
+                    <ul class="regulation-list">
+                        <li><strong>Prezentare</strong>: Echipele trebuie să fie prezente la teren cu cel puțin 30 de minute înainte de startul meciului.</li>
+                        <li><strong>Validare rezultate</strong>: Foile de arbitraj trebuie semnate de căpitanul fiecărei echipe imediat după încheierea meciului.</li>
+                        <li><strong>Contestații</strong>: Se depun în maximum 15 minute de la finalul partidei, în scris, la masa oficială; se analizează de comisia tehnică în aceeași zi.</li>
+                    </ul>
+                </section>
+
+                <section class="regulation-section regulation-contact">
+                    <h3>Contact organizatori</h3>
+                    <p>Întrebări suplimentare pot fi adresate la <a href="mailto:contact@turneu-volei.ro">contact@turneu-volei.ro</a> sau direct la masa oficială din sală.</p>
+                </section>
             </div>
         </div>
 
