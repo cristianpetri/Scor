@@ -1126,6 +1126,21 @@ nav {
     font-weight: 800;
     letter-spacing: -0.01em;
     text-transform: uppercase;
+    text-align: center;
+    line-height: 1.15;
+    word-break: break-word;
+}
+
+.team-card .team-name.team-name--medium {
+    font-size: 1.35rem;
+}
+
+.team-card .team-name.team-name--small {
+    font-size: 1.2rem;
+}
+
+.team-card .team-name.team-name--xsmall {
+    font-size: 1.05rem;
 }
 
 .team-card .team-points {

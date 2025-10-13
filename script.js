@@ -936,6 +936,16 @@ function loadLiveMatch() {
         });
 }
 
+function getAdaptiveTeamNameClass(name) {
+    if (!name) return '';
+    const trimmed = name.trim();
+    const length = trimmed.length;
+    if (length > 28) return 'team-name--xsmall';
+    if (length > 20) return 'team-name--small';
+    if (length > 14) return 'team-name--medium';
+    return '';
+}
+
 function renderLiveMatch(data) {
     const { match, sets = [], points = [] } = data;
     const container = document.getElementById('live-match-container');
@@ -987,6 +997,8 @@ function renderLiveMatch(data) {
         currentSetNumber,
         emptyMessage: 'Nu există date pentru acest meci.'
     });
+    const team1NameClass = getAdaptiveTeamNameClass(match.team1_name);
+    const team2NameClass = getAdaptiveTeamNameClass(match.team2_name);
     const scoreboard = `
         <div class="scoreboard">
             <div class="scoreboard-header">
@@ -1009,13 +1021,13 @@ function renderLiveMatch(data) {
             <div class="scoreboard-main">
                 <div class="team-card team1 ${team1Winner ? 'winner' : ''}">
                     ${team1WinnerTag}
-                    <div class="team-name">${match.team1_name}</div>
+                    <div class="team-name ${team1NameClass}">${match.team1_name}</div>
                     <div class="team-points">${currentPointsTeam1}</div>
                     <div class="team-meta">${pointsLabel}</div>
                 </div>
                 <div class="team-card team2 ${team2Winner ? 'winner' : ''}">
                     ${team2WinnerTag}
-                    <div class="team-name">${match.team2_name}</div>
+                    <div class="team-name ${team2NameClass}">${match.team2_name}</div>
                     <div class="team-points">${currentPointsTeam2}</div>
                     <div class="team-meta">${pointsLabel}</div>
                 </div>
