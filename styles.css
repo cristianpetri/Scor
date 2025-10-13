@@ -25,13 +25,13 @@
     /* Culori echipe - Roșu și Albastru */
     --team1-color-light: #dbeafe;
     --team1-color-mid: #93c5fd;
-    --team1-color-strong: #3b82f6;
-    --team1-color-dark: #1e40af;
-    
+    --team1-color-strong: #2563eb;
+    --team1-color-dark: #1d4ed8;
+
     --team2-color-light: #fee2e2;
-    --team2-color-mid: #fca5a5;
+    --team2-color-mid: #f87171;
     --team2-color-strong: #ef4444;
-    --team2-color-dark: #dc2626;
+    --team2-color-dark: #b91c1c;
     
     /* Neutrals */
     --gray-50: #f9fafb;
@@ -2077,13 +2077,29 @@ nav {
     .scoreboard-main {
         flex-direction: column;
     }
-    
+
     .team-card {
         max-width: none;
     }
-    
+
+    .team-card .team-name {
+        font-size: clamp(1.05rem, 4.5vw, 1.5rem);
+    }
+
+    .team-card .team-name.team-name--medium {
+        font-size: clamp(0.95rem, 4.2vw, 1.35rem);
+    }
+
+    .team-card .team-name.team-name--small {
+        font-size: clamp(0.9rem, 3.9vw, 1.2rem);
+    }
+
+    .team-card .team-name.team-name--xsmall {
+        font-size: clamp(0.85rem, 3.6vw, 1.05rem);
+    }
+
     .team-card .team-points {
-        font-size: 4rem;
+        font-size: 6rem;
     }
     
     .set-counter .set-value {
